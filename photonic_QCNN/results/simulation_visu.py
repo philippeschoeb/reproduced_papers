@@ -9,10 +9,12 @@ This will create 'simulation_results.png' in the same directory as 'detailed_res
 Figure 12 from the original paper for the selected dataset.
 """
 
-from matplotlib import pyplot as plt
 import json
-import numpy as np
 import os
+
+import numpy as np
+from matplotlib import pyplot as plt
+
 
 def aggregate_loss_per_epoch(loss_history, num_batches):
     return [
@@ -32,7 +34,7 @@ def get_loss_acc_visu(detailed_results_path):
         "simulation_results.png"
     )
 
-    with open(detailed_results_path, "r") as f:
+    with open(detailed_results_path) as f:
         data = json.load(f)
 
     loss_histories = []

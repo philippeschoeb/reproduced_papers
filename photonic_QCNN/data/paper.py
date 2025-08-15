@@ -39,7 +39,7 @@ def get_bas():
         y_test[y_test == -1] = 0
 
         return x_train, x_test, y_train, y_test
-        
+
     except Exception as e:
         print(f"Error loading PennyLane BAS dataset: {e}")
         raise e

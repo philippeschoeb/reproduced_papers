@@ -15,11 +15,13 @@ Usage 2 is to reproduce Figure 4 a) from the reference paper which displays the 
 the second readout training method: associate a pair of modes to label 0 and the rest to label 1.
 """
 
-import os
 import argparse
 import json
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
+
 
 def readout_visu_first():
     path_7 = input("Enter the path to first_readout_detailed_results_k_7.json: ").strip()
@@ -35,11 +37,11 @@ def readout_visu_first():
     )
 
     # Load data for k=7
-    with open(path_7, 'r') as f:
+    with open(path_7) as f:
         data_7 = json.load(f)
 
     # Load data for k=8
-    with open(path_8, 'r') as f:
+    with open(path_8) as f:
         data_8 = json.load(f)
 
     # Process k=7 data
@@ -123,7 +125,7 @@ def readout_visu_second():
     output_path = os.path.join(os.path.dirname(path), "second_readout_accs_vs_modes.png")
 
     # Load data
-    with open(path, 'r') as f:
+    with open(path) as f:
         data = json.load(f)
 
     # Create mode pair mapping
@@ -178,7 +180,7 @@ def readout_visu_second():
     ax.grid(True, alpha=0.3)
 
     # Adjust y-axis based on data
-    all_values = train_means + test_means
+    train_means + test_means
     y_min = 0.0
     y_max = 1.0
     ax.set_ylim(y_min, y_max)
