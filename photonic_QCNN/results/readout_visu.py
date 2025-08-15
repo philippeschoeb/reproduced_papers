@@ -24,16 +24,18 @@ import numpy as np
 
 
 def readout_visu_first():
-    path_7 = input("Enter the path to first_readout_detailed_results_k_7.json: ").strip()
-    path_8 = input("Enter the path to first_readout_detailed_results_k_8.json: ").strip()
+    path_7 = input(
+        "Enter the path to first_readout_detailed_results_k_7.json: "
+    ).strip()
+    path_8 = input(
+        "Enter the path to first_readout_detailed_results_k_8.json: "
+    ).strip()
 
     output_path_7 = os.path.join(
-        os.path.dirname(path_7),
-        "first_readout_tain_vs_test_accs.png"
+        os.path.dirname(path_7), "first_readout_tain_vs_test_accs.png"
     )
     output_path_8 = os.path.join(
-        os.path.dirname(path_8),
-        "first_readout_tain_vs_test_accs.png"
+        os.path.dirname(path_8), "first_readout_tain_vs_test_accs.png"
     )
 
     # Load data for k=7
@@ -66,29 +68,35 @@ def readout_visu_first():
     fig, ax = plt.subplots(figsize=(8, 6))
 
     # Scatter plot with matching colors
-    ax.scatter(train_accs_8, test_accs_8, color='blue', alpha=0.7,
-               label='k=8', s=20)
-    ax.scatter(train_accs_7, test_accs_7, color='orange', alpha=0.7,
-               label='k=7', s=20)
+    ax.scatter(train_accs_8, test_accs_8, color="blue", alpha=0.7, label="k=8", s=20)
+    ax.scatter(train_accs_7, test_accs_7, color="orange", alpha=0.7, label="k=7", s=20)
 
     # Define tolerance (you can adjust this threshold as needed)
     tolerance = 1e-2  # A small tolerance to consider values close to 1.0
 
     # For blue (k=8)
-    blue_mask = (np.isclose(train_accs_8, 1.0, atol=tolerance)) & (np.isclose(test_accs_8, 1.0, atol=tolerance))
+    blue_mask = (np.isclose(train_accs_8, 1.0, atol=tolerance)) & (
+        np.isclose(test_accs_8, 1.0, atol=tolerance)
+    )
     blue_proportion = np.sum(blue_mask) / len(train_accs_8)
 
     # For orange (k=7)
-    orange_mask = (np.isclose(train_accs_7, 1.0, atol=tolerance)) & (np.isclose(test_accs_7, 1.0, atol=tolerance))
+    orange_mask = (np.isclose(train_accs_7, 1.0, atol=tolerance)) & (
+        np.isclose(test_accs_7, 1.0, atol=tolerance)
+    )
     orange_proportion = np.sum(orange_mask) / len(train_accs_7)
 
     # Print the results
-    print(f"Proportion of (1.0, 1.0) ± {tolerance} points for k=8 (blue): {blue_proportion:.4f}")
-    print(f"Proportion of (1.0, 1.0) ± {tolerance} points for k=7 (orange): {orange_proportion:.4f}")
+    print(
+        f"Proportion of (1.0, 1.0) ± {tolerance} points for k=8 (blue): {blue_proportion:.4f}"
+    )
+    print(
+        f"Proportion of (1.0, 1.0) ± {tolerance} points for k=7 (orange): {orange_proportion:.4f}"
+    )
 
     # Formatting
-    ax.set_xlabel('Training accuracy')
-    ax.set_ylabel('Testing accuracy')
+    ax.set_xlabel("Training accuracy")
+    ax.set_ylabel("Testing accuracy")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
@@ -110,8 +118,8 @@ def readout_visu_first():
     plt.tight_layout()
 
     # Save to both paths
-    plt.savefig(output_path_7, dpi=300, bbox_inches='tight')
-    plt.savefig(output_path_8, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path_7, dpi=300, bbox_inches="tight")
+    plt.savefig(output_path_8, dpi=300, bbox_inches="tight")
     plt.close()
 
     print(f"Figure saved to: {output_path_7}")
@@ -122,7 +130,9 @@ def readout_visu_first():
 
 def readout_visu_second():
     path = input("Enter the path to second_readout_detailed_results.json: ").strip()
-    output_path = os.path.join(os.path.dirname(path), "second_readout_accs_vs_modes.png")
+    output_path = os.path.join(
+        os.path.dirname(path), "second_readout_accs_vs_modes.png"
+    )
 
     # Load data
     with open(path) as f:
@@ -166,16 +176,32 @@ def readout_visu_second():
     offset = 0.1  # Small horizontal offset to separate train and test points
 
     # Plot with error bars and slight horizontal separation
-    ax.errorbar(x_pos - offset, train_means, yerr=train_stds, fmt='o', color='blue',
-                label='Training set', capsize=3, markersize=4)
-    ax.errorbar(x_pos + offset, test_means, yerr=test_stds, fmt='o', color='red',
-                label='Test set', capsize=3, markersize=4)
+    ax.errorbar(
+        x_pos - offset,
+        train_means,
+        yerr=train_stds,
+        fmt="o",
+        color="blue",
+        label="Training set",
+        capsize=3,
+        markersize=4,
+    )
+    ax.errorbar(
+        x_pos + offset,
+        test_means,
+        yerr=test_stds,
+        fmt="o",
+        color="red",
+        label="Test set",
+        capsize=3,
+        markersize=4,
+    )
 
     # Formatting
-    ax.set_xlabel('Modes associated to label 0')
-    ax.set_ylabel('Average accuracy')
+    ax.set_xlabel("Modes associated to label 0")
+    ax.set_ylabel("Average accuracy")
     ax.set_xticks(x_pos)
-    ax.set_xticklabels(x_labels, rotation=45, ha='right')
+    ax.set_xticklabels(x_labels, rotation=45, ha="right")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
@@ -186,7 +212,7 @@ def readout_visu_second():
     ax.set_ylim(y_min, y_max)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close()
 
     print(f"Figure saved to: {output_path}")
@@ -199,8 +225,8 @@ def main():
 
     # Create a mutually exclusive group
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--first', action='store_true', help='Use first option')
-    group.add_argument('--second', action='store_true', help='Use second option')
+    group.add_argument("--first", action="store_true", help="Use first option")
+    group.add_argument("--second", action="store_true", help="Use second option")
 
     args = parser.parse_args()
 
@@ -210,8 +236,10 @@ def main():
     elif args.second:
         readout_visu_second()
     else:
-        raise Exception('You must specify either first or second usage with "--first" or "--second".')
+        raise Exception(
+            'You must specify either first or second usage with "--first" or "--second".'
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

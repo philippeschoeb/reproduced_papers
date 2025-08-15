@@ -18,7 +18,7 @@ from matplotlib import pyplot as plt
 
 def aggregate_loss_per_epoch(loss_history, num_batches):
     return [
-        np.mean(loss_history[i*num_batches : (i+1)*num_batches])
+        np.mean(loss_history[i * num_batches : (i + 1) * num_batches])
         for i in range(len(loss_history) // num_batches)
     ]
 
@@ -30,8 +30,7 @@ def get_loss_acc_visu(detailed_results_path):
     :param detailed_results_path
     """
     output_path = os.path.join(
-        os.path.dirname(detailed_results_path),
-        "simulation_results.png"
+        os.path.dirname(detailed_results_path), "simulation_results.png"
     )
 
     with open(detailed_results_path) as f:
@@ -72,16 +71,32 @@ def get_loss_acc_visu(detailed_results_path):
 
     # ---- Loss Figure ----
     ax = axes[1]
-    ax.plot(loss_epochs, loss_histories.mean(axis=0), color="blue", label="Mean Train Loss ± Std")
-    ax.fill_between(loss_epochs,
-                     loss_histories.mean(axis=0) - loss_histories.std(axis=0),
-                     loss_histories.mean(axis=0) + loss_histories.std(axis=0),
-                     color="blue", alpha=0.2)
-    ax.plot(loss_epochs, test_loss_histories.mean(axis=0), color="orange", label="Mean Test Loss ± Std")
-    ax.fill_between(loss_epochs,
-                    test_loss_histories.mean(axis=0) - test_loss_histories.std(axis=0),
-                    test_loss_histories.mean(axis=0) + test_loss_histories.std(axis=0),
-                    color="orange", alpha=0.2)
+    ax.plot(
+        loss_epochs,
+        loss_histories.mean(axis=0),
+        color="blue",
+        label="Mean Train Loss ± Std",
+    )
+    ax.fill_between(
+        loss_epochs,
+        loss_histories.mean(axis=0) - loss_histories.std(axis=0),
+        loss_histories.mean(axis=0) + loss_histories.std(axis=0),
+        color="blue",
+        alpha=0.2,
+    )
+    ax.plot(
+        loss_epochs,
+        test_loss_histories.mean(axis=0),
+        color="orange",
+        label="Mean Test Loss ± Std",
+    )
+    ax.fill_between(
+        loss_epochs,
+        test_loss_histories.mean(axis=0) - test_loss_histories.std(axis=0),
+        test_loss_histories.mean(axis=0) + test_loss_histories.std(axis=0),
+        color="orange",
+        alpha=0.2,
+    )
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Loss")
     ax.legend()
@@ -89,16 +104,32 @@ def get_loss_acc_visu(detailed_results_path):
 
     # ---- Accuracy Figure ----
     ax = axes[0]
-    ax.plot(accs_epochs, train_acc_histories.mean(axis=0)*100, color="blue", label="Mean Train Acc ± Std")
-    ax.fill_between(accs_epochs,
-                    (train_acc_histories.mean(axis=0) - train_acc_histories.std(axis=0))*100,
-                    (train_acc_histories.mean(axis=0) + train_acc_histories.std(axis=0))*100,
-                     color="blue", alpha=0.2)
-    ax.plot(accs_epochs, test_acc_histories.mean(axis=0)*100, color="orange", label="Mean Test Acc ± Std")
-    ax.fill_between(accs_epochs,
-                    (test_acc_histories.mean(axis=0) - test_acc_histories.std(axis=0))*100,
-                    (test_acc_histories.mean(axis=0) + test_acc_histories.std(axis=0))*100,
-                     color="orange", alpha=0.2)
+    ax.plot(
+        accs_epochs,
+        train_acc_histories.mean(axis=0) * 100,
+        color="blue",
+        label="Mean Train Acc ± Std",
+    )
+    ax.fill_between(
+        accs_epochs,
+        (train_acc_histories.mean(axis=0) - train_acc_histories.std(axis=0)) * 100,
+        (train_acc_histories.mean(axis=0) + train_acc_histories.std(axis=0)) * 100,
+        color="blue",
+        alpha=0.2,
+    )
+    ax.plot(
+        accs_epochs,
+        test_acc_histories.mean(axis=0) * 100,
+        color="orange",
+        label="Mean Test Acc ± Std",
+    )
+    ax.fill_between(
+        accs_epochs,
+        (test_acc_histories.mean(axis=0) - test_acc_histories.std(axis=0)) * 100,
+        (test_acc_histories.mean(axis=0) + test_acc_histories.std(axis=0)) * 100,
+        color="orange",
+        alpha=0.2,
+    )
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Accuracy (%)")
     ax.legend()
@@ -106,10 +137,24 @@ def get_loss_acc_visu(detailed_results_path):
 
     # ---- Individual Runs Figure ----
     ax = axes[2]
-    colors = ['green', 'red', 'blue', 'purple', 'orange']
-    for i, (train_acc, test_acc) in enumerate(zip(train_acc_histories, test_acc_histories)):
-        ax.plot(accs_epochs, train_acc*100, color=colors[i], linestyle="-", label=f"Train Run {i}")
-        ax.plot(accs_epochs, test_acc*100, color=colors[i], linestyle="--", label=f"Test Run {i}")
+    colors = ["green", "red", "blue", "purple", "orange"]
+    for i, (train_acc, test_acc) in enumerate(
+        zip(train_acc_histories, test_acc_histories)
+    ):
+        ax.plot(
+            accs_epochs,
+            train_acc * 100,
+            color=colors[i],
+            linestyle="-",
+            label=f"Train Run {i}",
+        )
+        ax.plot(
+            accs_epochs,
+            test_acc * 100,
+            color=colors[i],
+            linestyle="--",
+            label=f"Test Run {i}",
+        )
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Accuracy (%)")
     ax.legend()

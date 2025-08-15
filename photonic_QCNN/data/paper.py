@@ -25,13 +25,16 @@ def get_bas():
     try:
         # Load BAS dataset from pennylane library
         [ds] = qml.data.load("other", name="bars-and-stripes")
-        x_train = np.array(ds.train['4']['inputs']) # vector representations images
-        y_train = np.array(ds.train['4']['labels']) # labels for the above images
-        x_test = np.array(ds.test['4']['inputs']) # vector representations of images
-        y_test = np.array(ds.test['4']['labels']) # labels for the above images
+        x_train = np.array(ds.train["4"]["inputs"])  # vector representations images
+        y_train = np.array(ds.train["4"]["labels"])  # labels for the above images
+        x_test = np.array(ds.test["4"]["inputs"])  # vector representations of images
+        y_test = np.array(ds.test["4"]["labels"])  # labels for the above images
 
         # Reshape the data:
-        x_train, x_test = x_train[:400].reshape(400, 4, 4), x_test[:200].reshape(200, 4, 4)
+        x_train, x_test = (
+            x_train[:400].reshape(400, 4, 4),
+            x_test[:200].reshape(200, 4, 4),
+        )
         y_train, y_test = y_train[:400], y_test[:200]
 
         # Transform label -1 to label 0:
@@ -65,10 +68,18 @@ def get_custom_bas():
 
     random.shuffle(data_downloaded)
 
-    x_train = np.array([data_downloaded[i][1] for i in range(400)])  # vector representations images
-    y_train = np.array([data_downloaded[i][0] for i in range(400)])  # labels for the above images
-    x_test = np.array([data_downloaded[i][1] for i in range(400, 400 + 200)])  # vector representations of images
-    y_test = np.array([data_downloaded[i][0] for i in range(400, 400 + 200)])  # labels for the above images
+    x_train = np.array(
+        [data_downloaded[i][1] for i in range(400)]
+    )  # vector representations images
+    y_train = np.array(
+        [data_downloaded[i][0] for i in range(400)]
+    )  # labels for the above images
+    x_test = np.array(
+        [data_downloaded[i][1] for i in range(400, 400 + 200)]
+    )  # vector representations of images
+    y_test = np.array(
+        [data_downloaded[i][0] for i in range(400, 400 + 200)]
+    )  # labels for the above images
 
     # Reshape the data:
     x_train = x_train[:400].reshape(400, 4, 4)
@@ -101,9 +112,14 @@ def get_mnist(class_list=(0, 1)):
             - y_test: (200,) test labels
     """
     digits = load_digits()
-    (x_train, y_train), (x_test, y_test) = (digits.data[:750], digits.target[:750]), (digits.data[750:],
-                                                                                      digits.target[750:])
-    x_train, x_test = x_train.reshape(x_train.shape[0], 8,8), x_test.reshape(x_test.shape[0], 8,8)
+    (x_train, y_train), (x_test, y_test) = (
+        (digits.data[:750], digits.target[:750]),
+        (digits.data[750:], digits.target[750:]),
+    )
+    x_train, x_test = (
+        x_train.reshape(x_train.shape[0], 8, 8),
+        x_test.reshape(x_test.shape[0], 8, 8),
+    )
 
     # Only keep the classes in class_list
     train_list_data_array, train_list_label_array = [], []
@@ -117,4 +133,9 @@ def get_mnist(class_list=(0, 1)):
             test_list_data_array.append(x_test[i])
             test_list_label_array.append(int(y_test[i]))
 
-    return np.array(train_list_data_array), np.array(test_list_data_array), np.array(train_list_label_array), np.array(test_list_label_array)
+    return (
+        np.array(train_list_data_array),
+        np.array(test_list_data_array),
+        np.array(train_list_label_array),
+        np.array(test_list_label_array),
+    )

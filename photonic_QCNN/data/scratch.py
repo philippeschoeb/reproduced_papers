@@ -28,14 +28,15 @@ def get_bas(random_state):
 
     # Split into 400 train and 200 test
     bas_x_train, bas_x_test, bas_y_train, bas_y_test = train_test_split(
-        bas_x_all, bas_y_all, test_size=200, train_size=400, random_state=random_state)
+        bas_x_all, bas_y_all, test_size=200, train_size=400, random_state=random_state
+    )
 
     bas_x_train = np.reshape(bas_x_train, (400, 4, 4))
     bas_x_test = np.reshape(bas_x_test, (200, 4, 4))
 
     # Convert labels from -1, 1 to 0, 1
-    bas_y_train = (bas_y_train == 1)
-    bas_y_test = (bas_y_test == 1)
+    bas_y_train = bas_y_train == 1
+    bas_y_test = bas_y_test == 1
     bas_y_train = bas_y_train.astype(float)
     bas_y_test = bas_y_test.astype(float)
 
@@ -63,7 +64,7 @@ def get_custom_bas(random_state):
 
     # Only add Gaussian noise to pixels of high value (=1).
     # That results in images for which all low value pixels will be equal to -1.
-    mask = (custom_bas_x == 1)
+    mask = custom_bas_x == 1
     rng = np.random.default_rng(seed=random_state)
     noise = rng.normal(0, 0.5, size=custom_bas_x.shape)
     noisy_bas_x = custom_bas_x + noise * mask
@@ -72,13 +73,18 @@ def get_custom_bas(random_state):
     # noisy_bas_x[noisy_bas_x == -1] = 0  # Weirdly enough this modification really hurts the performance
 
     c_bas_x_train, c_bas_x_test, c_bas_y_train, c_bas_y_test = train_test_split(
-        noisy_bas_x, custom_bas_y, test_size=200, train_size=400, random_state=random_state)
+        noisy_bas_x,
+        custom_bas_y,
+        test_size=200,
+        train_size=400,
+        random_state=random_state,
+    )
     c_bas_x_train = np.reshape(c_bas_x_train, (400, 4, 4))
     c_bas_x_test = np.reshape(c_bas_x_test, (200, 4, 4))
 
     # Convert labels from -1, 1 to 0, 1
-    c_bas_y_train = (c_bas_y_train == 1)
-    c_bas_y_test = (c_bas_y_test == 1)
+    c_bas_y_train = c_bas_y_train == 1
+    c_bas_y_test = c_bas_y_test == 1
     c_bas_y_train = c_bas_y_train.astype(float)
     c_bas_y_test = c_bas_y_test.astype(float)
 
@@ -112,7 +118,8 @@ def get_mnist(random_state, class_list=(0, 1)):
 
     # Train/test split
     mnist_x_train, mnist_x_test, mnist_y_train, mnist_y_test = train_test_split(
-        mnist_x, mnist_y, test_size=200, random_state=random_state)
+        mnist_x, mnist_y, test_size=200, random_state=random_state
+    )
     # Since there are only 360 data points in this specific dataset with labels = 0 or 1, that implies that we will
     # have 160 training points. The paper implementation does something slightly different so they have 154 training
     # points. We do not consider this difference significant.

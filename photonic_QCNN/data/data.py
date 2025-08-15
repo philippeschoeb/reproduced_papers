@@ -23,24 +23,32 @@ def get_dataset(dataset_name, source, random_state):
         AssertionError: If dataset_name or source are invalid
     """
 
-    assert dataset_name in ['BAS', 'Custom BAS', 'MNIST'], f'Invalid dataset name: {dataset_name}'
-    assert source in ['paper', 'scratch'], f'Invalid source: {source}'
+    assert dataset_name in ["BAS", "Custom BAS", "MNIST"], (
+        f"Invalid dataset name: {dataset_name}"
+    )
+    assert source in ["paper", "scratch"], f"Invalid source: {source}"
 
-    if dataset_name == 'BAS':
-        if source == 'paper':
+    if dataset_name == "BAS":
+        if source == "paper":
             x_train, x_test, y_train, y_test = paper.get_bas()
         else:
-            x_train, x_test, y_train, y_test = scratch.get_bas(random_state=random_state)
-    elif dataset_name == 'Custom BAS':
-        if source == 'paper':
+            x_train, x_test, y_train, y_test = scratch.get_bas(
+                random_state=random_state
+            )
+    elif dataset_name == "Custom BAS":
+        if source == "paper":
             x_train, x_test, y_train, y_test = paper.get_custom_bas()
         else:
-            x_train, x_test, y_train, y_test = scratch.get_custom_bas(random_state=random_state)
+            x_train, x_test, y_train, y_test = scratch.get_custom_bas(
+                random_state=random_state
+            )
     else:
-        if source == 'paper':
+        if source == "paper":
             x_train, x_test, y_train, y_test = paper.get_mnist()
         else:
-            x_train, x_test, y_train, y_test = scratch.get_mnist(random_state=random_state)
+            x_train, x_test, y_train, y_test = scratch.get_mnist(
+                random_state=random_state
+            )
     return x_train, x_test, y_train, y_test
 
 
@@ -60,33 +68,33 @@ def get_dataset_description(x_train, x_test, y_train, y_test, dataset_name):
         "x_train": x_train,
         "x_test": x_test,
         "y_train": y_train,
-        "y_test": y_test
+        "y_test": y_test,
     }
-    s = ''
+    s = ""
 
     for name, array in arrays.items():
-        s += (f"\n📊{dataset_name} - {name}\n")
-        s += ("-" * (len(name) + 4) + "\n")
-        s += (f"Shape      : {array.shape}\n")
-        s += (f"Dtype      : {array.dtype}\n\n")
+        s += f"\n📊{dataset_name} - {name}\n"
+        s += "-" * (len(name) + 4) + "\n"
+        s += f"Shape      : {array.shape}\n"
+        s += f"Dtype      : {array.dtype}\n\n"
 
         # Flatten for scalar stats
         flat = array.flatten()
 
         if np.issubdtype(array.dtype, np.number):
-            s += (f"Min        : {flat.min()}\n")
-            s += (f"Max        : {flat.max()}\n")
-            s += (f"Mean       : {flat.mean():.4f}\n")
-            s += (f"Std        : {flat.std():.4f}\n\n")
+            s += f"Min        : {flat.min()}\n"
+            s += f"Max        : {flat.max()}\n"
+            s += f"Mean       : {flat.mean():.4f}\n"
+            s += f"Std        : {flat.std():.4f}\n\n"
         else:
-            s += ("Non-numeric data\n\n")
+            s += "Non-numeric data\n\n"
 
         # Unique values
         unique_vals = np.unique(array)
         if unique_vals.size <= 20:  # Don't print a huge list
-            s += (f"Unique vals: {unique_vals}\n")
+            s += f"Unique vals: {unique_vals}\n"
         else:
-            s += (f"Unique vals: {unique_vals[:10]} ... (total {len(unique_vals)})\n")
+            s += f"Unique vals: {unique_vals[:10]} ... (total {len(unique_vals)})\n"
 
     return s
 
@@ -139,7 +147,9 @@ def convert_tensor_to_loader(x_train, y_train, batch_size=6):
         DataLoader: PyTorch DataLoader with shuffling enabled
     """
     train_dataset = torch.utils.data.TensorDataset(x_train, y_train)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=True
+    )
     return train_loader
 
 
@@ -172,20 +182,80 @@ def convert_scalar_labels_to_onehot(y_train, y_test):
 if __name__ == "__main__":
     # Collect all datasets from scratch and from paper -> Save their descriptions at ./datasets_details/
 
-    scratch_bas_x_train, scratch_bas_x_test, scratch_bas_y_train, scratch_bas_y_test = get_dataset('BAS','scratch', 42)
-    save_dataset_description(scratch_bas_x_train, scratch_bas_x_test, scratch_bas_y_train, scratch_bas_y_test, 'BAS', './datasets_details/BAS_scratch.txt')
+    scratch_bas_x_train, scratch_bas_x_test, scratch_bas_y_train, scratch_bas_y_test = (
+        get_dataset("BAS", "scratch", 42)
+    )
+    save_dataset_description(
+        scratch_bas_x_train,
+        scratch_bas_x_test,
+        scratch_bas_y_train,
+        scratch_bas_y_test,
+        "BAS",
+        "./datasets_details/BAS_scratch.txt",
+    )
 
-    scratch_c_bas_x_train, scratch_c_bas_x_test, scratch_c_bas_y_train, scratch_c_bas_y_test = get_dataset('Custom BAS','scratch', 42)
-    save_dataset_description(scratch_c_bas_x_train, scratch_c_bas_x_test, scratch_c_bas_y_train, scratch_c_bas_y_test, 'Custom BAS', './datasets_details/custom_BAS_scratch.txt')
+    (
+        scratch_c_bas_x_train,
+        scratch_c_bas_x_test,
+        scratch_c_bas_y_train,
+        scratch_c_bas_y_test,
+    ) = get_dataset("Custom BAS", "scratch", 42)
+    save_dataset_description(
+        scratch_c_bas_x_train,
+        scratch_c_bas_x_test,
+        scratch_c_bas_y_train,
+        scratch_c_bas_y_test,
+        "Custom BAS",
+        "./datasets_details/custom_BAS_scratch.txt",
+    )
 
-    scratch_mnist_x_train, scratch_mnist_x_test, scratch_mnist_y_train, scratch_mnist_y_test = get_dataset('MNIST', 'scratch', 42)
-    save_dataset_description(scratch_mnist_x_train, scratch_mnist_x_test, scratch_mnist_y_train, scratch_mnist_y_test, 'MNIST', './datasets_details/MNIST_scratch.txt')
+    (
+        scratch_mnist_x_train,
+        scratch_mnist_x_test,
+        scratch_mnist_y_train,
+        scratch_mnist_y_test,
+    ) = get_dataset("MNIST", "scratch", 42)
+    save_dataset_description(
+        scratch_mnist_x_train,
+        scratch_mnist_x_test,
+        scratch_mnist_y_train,
+        scratch_mnist_y_test,
+        "MNIST",
+        "./datasets_details/MNIST_scratch.txt",
+    )
 
-    paper_bas_x_train, paper_bas_x_test, paper_bas_y_train, paper_bas_y_test = get_dataset('BAS', 'paper', 42)
-    save_dataset_description(paper_bas_x_train, paper_bas_x_test, paper_bas_y_train, paper_bas_y_test, 'BAS', './datasets_details/BAS_paper.txt')
+    paper_bas_x_train, paper_bas_x_test, paper_bas_y_train, paper_bas_y_test = (
+        get_dataset("BAS", "paper", 42)
+    )
+    save_dataset_description(
+        paper_bas_x_train,
+        paper_bas_x_test,
+        paper_bas_y_train,
+        paper_bas_y_test,
+        "BAS",
+        "./datasets_details/BAS_paper.txt",
+    )
 
-    paper_c_bas_x_train, paper_c_bas_x_test, paper_c_bas_y_train, paper_c_bas_y_test = get_dataset('Custom BAS', 'paper', 42)
-    save_dataset_description(paper_c_bas_x_train, paper_c_bas_x_test, paper_c_bas_y_train, paper_c_bas_y_test, 'Custom BAS','./datasets_details/custom_BAS_paper.txt')
+    paper_c_bas_x_train, paper_c_bas_x_test, paper_c_bas_y_train, paper_c_bas_y_test = (
+        get_dataset("Custom BAS", "paper", 42)
+    )
+    save_dataset_description(
+        paper_c_bas_x_train,
+        paper_c_bas_x_test,
+        paper_c_bas_y_train,
+        paper_c_bas_y_test,
+        "Custom BAS",
+        "./datasets_details/custom_BAS_paper.txt",
+    )
 
-    paper_mnist_x_train, paper_mnist_x_test, paper_mnist_y_train, paper_mnist_y_test = get_dataset('MNIST','paper', 42)
-    save_dataset_description(paper_mnist_x_train, paper_mnist_x_test, paper_mnist_y_train, paper_mnist_y_test,'MNIST','./datasets_details/MNIST_paper.txt')
+    paper_mnist_x_train, paper_mnist_x_test, paper_mnist_y_train, paper_mnist_y_test = (
+        get_dataset("MNIST", "paper", 42)
+    )
+    save_dataset_description(
+        paper_mnist_x_train,
+        paper_mnist_x_test,
+        paper_mnist_y_train,
+        paper_mnist_y_test,
+        "MNIST",
+        "./datasets_details/MNIST_paper.txt",
+    )
