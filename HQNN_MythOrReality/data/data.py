@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 import torch
 from merlin.datasets import spiral
@@ -24,7 +23,7 @@ class SpiralDatasetConfig:
 
 def load_spiral_dataset(
     config: SpiralDatasetConfig,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, int, int]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, int, int]:
     """Load and normalise the synthetic spiral dataset."""
 
     x, y, _ = spiral.get_data(
