@@ -6,11 +6,25 @@ import torch
 from torchvision import datasets, transforms
 from sklearn.decomposition import PCA
 
+_DATASET_MAP = {
+    "mnist": datasets.MNIST,
+    "fashionmnist": datasets.FashionMNIST,
+    "kmnist": datasets.KMNIST,
+}
 
-def make_pca(k: int):
+
+def make_pca(k: int, dataset: str = "mnist"):
+    dataset_key = dataset.replace("-", "").replace("_", "").lower()
+    try:
+        print(f"With dataset: {dataset_key}")
+        dataset_cls = _DATASET_MAP[dataset_key]
+    except KeyError as exc:
+        valid = ", ".join(sorted(_DATASET_MAP))
+        raise ValueError(f"Unknown dataset '{dataset}'. Valid options: {valid}.") from exc
+
     to_t = transforms.Compose([transforms.ToTensor()])
-    base_tr = datasets.MNIST("./data", train=True, download=True, transform=to_t)
-    base_te = datasets.MNIST("./data", train=False, download=True, transform=to_t)
+    base_tr = dataset_cls("./data", train=True, download=True, transform=to_t)
+    base_te = dataset_cls("./data", train=False, download=True, transform=to_t)
 
     def filt(base):
         Xs, Ys = [], []
