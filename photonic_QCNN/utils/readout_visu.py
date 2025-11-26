@@ -17,33 +17,42 @@ the second readout training method: associate a pair of modes to label 0 and the
 
 import argparse
 import json
-import os
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 
-def readout_visu_first():
-    path_7 = input(
-        "Enter the path to first_readout_detailed_results_k_7.json: "
-    ).strip()
-    path_8 = input(
-        "Enter the path to first_readout_detailed_results_k_8.json: "
-    ).strip()
+def _save_plot_multiple(fig, paths: Sequence[Path]) -> None:
+    for path in paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(path, dpi=300, bbox_inches="tight")
+        print(f"Figure saved to: {path}")
 
-    output_path_7 = os.path.join(
-        os.path.dirname(path_7), "first_readout_tain_vs_test_accs.png"
-    )
-    output_path_8 = os.path.join(
-        os.path.dirname(path_8), "first_readout_tain_vs_test_accs.png"
-    )
+
+def readout_visu_first(
+    path_7: Path,
+    path_8: Path,
+    output_dir: Optional[Path] = None,
+) -> Sequence[Path]:
+    path_7 = Path(path_7)
+    path_8 = Path(path_8)
+    if output_dir:
+        output_paths = [Path(output_dir) / "first_readout_tain_vs_test_accs.png"]
+    else:
+        output_paths = [
+            path_7.parent / "first_readout_tain_vs_test_accs.png",
+            path_8.parent / "first_readout_tain_vs_test_accs.png",
+        ]
 
     # Load data for k=7
-    with open(path_7) as f:
+    with path_7.open() as f:
         data_7 = json.load(f)
 
     # Load data for k=8
-    with open(path_8) as f:
+    with path_8.open() as f:
         data_8 = json.load(f)
 
     # Process k=7 data
@@ -115,27 +124,26 @@ def readout_visu_first():
         ax.set_xlim(x_min - x_margin, x_max + x_margin)
         ax.set_ylim(y_min - y_margin, y_max + y_margin)
 
-    plt.tight_layout()
+    fig.tight_layout()
+    _save_plot_multiple(fig, output_paths)
+    plt.close(fig)
 
-    # Save to both paths
-    plt.savefig(output_path_7, dpi=300, bbox_inches="tight")
-    plt.savefig(output_path_8, dpi=300, bbox_inches="tight")
-    plt.close()
-
-    print(f"Figure saved to: {output_path_7}")
-    print(f"Figure saved to: {output_path_8}")
-
-    return
+    return output_paths
 
 
-def readout_visu_second():
-    path = input("Enter the path to second_readout_detailed_results.json: ").strip()
-    output_path = os.path.join(
-        os.path.dirname(path), "second_readout_accs_vs_modes.png"
+def readout_visu_second(
+    path: Path,
+    output_dir: Optional[Path] = None,
+) -> Path:
+    path = Path(path)
+    output_path = (
+        Path(output_dir) / "second_readout_accs_vs_modes.png"
+        if output_dir
+        else path.parent / "second_readout_accs_vs_modes.png"
     )
 
     # Load data
-    with open(path) as f:
+    with path.open() as f:
         data = json.load(f)
 
     # Create mode pair mapping
@@ -211,34 +219,66 @@ def readout_visu_second():
     y_max = 1.0
     ax.set_ylim(y_min, y_max)
 
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches="tight")
-    plt.close()
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
     print(f"Figure saved to: {output_path}")
 
-    return
+    return output_path
+
+
+def _prompt_path(message: str, default: Optional[Path] = None) -> Path:
+    if default:
+        return default
+    user_input = input(message).strip()
+    return Path(user_input)
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Readout visualization helper")
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--first", action="store_true", help="Plot Figure 4b/c variant")
+    group.add_argument("--second", action="store_true", help="Plot Figure 4a variant")
+
+    parser.add_argument("--k7-path", type=Path, help="Path to k=7 JSON results file.")
+    parser.add_argument("--k8-path", type=Path, help="Path to k=8 JSON results file.")
+    parser.add_argument(
+        "--second-path",
+        type=Path,
+        help="Path to second_readout_detailed_results.json.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help="Optional directory to store the resulting figure(s).",
+    )
+    return parser.parse_args()
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Example script with flags")
+    args = _parse_args()
 
-    # Create a mutually exclusive group
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--first", action="store_true", help="Use first option")
-    group.add_argument("--second", action="store_true", help="Use second option")
-
-    args = parser.parse_args()
-
-    # Check which flag was used
     if args.first:
-        readout_visu_first()
-    elif args.second:
-        readout_visu_second()
-    else:
-        raise Exception(
-            'You must specify either first or second usage with "--first" or "--second".'
+        path_7 = _prompt_path(
+            "Enter the path to first_readout_detailed_results_k_7.json: ",
+            args.k7_path,
         )
+        path_8 = _prompt_path(
+            "Enter the path to first_readout_detailed_results_k_8.json: ",
+            args.k8_path,
+        )
+        readout_visu_first(path_7, path_8, args.output_dir)
+    elif args.second:
+        results_path = _prompt_path(
+            "Enter the path to second_readout_detailed_results.json: ",
+            args.second_path,
+        )
+        readout_visu_second(results_path, args.output_dir)
+    else:
+        raise RuntimeError("Either --first or --second must be provided.")
 
 
 if __name__ == "__main__":

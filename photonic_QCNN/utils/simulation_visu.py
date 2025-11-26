@@ -1,16 +1,19 @@
 """
-Usage (after running the MerLin version of the PQCNN):
-    python simulation_visu.py
-    -> Enter the path to detailed_results.json:
+Generate the training/validation curves used in Figure 12 of the paper.
 
-And enter the path to your detailed_results.json file from running the MerLin version of the PQCNN on whichever dataset.
+Usage examples:
 
-This will create 'simulation_results.png' in the same directory as 'detailed_results.json' which is equivalent to the
-Figure 12 from the original paper for the selected dataset.
+    python simulation_visu.py --detailed-results path/to/detailed_results.json
+    python simulation_visu.py --detailed-results ... --output custom_plot.png
+
+If no CLI arguments are provided, the script will prompt for `detailed_results.json`
+and write `simulation_results.png` next to it.
 """
 
+import argparse
 import json
-import os
+from pathlib import Path
+from typing import Optional
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -23,17 +26,18 @@ def aggregate_loss_per_epoch(loss_history, num_batches):
     ]
 
 
-def get_loss_acc_visu(detailed_results_path):
-    """
-    Get from detailed results the simulation visualizations (just like Figure 12 from paper)
+def generate_simulation_plot(
+    detailed_results_path: Path, output_path: Optional[Path] = None
+) -> Path:
+    """Create the Figure 12-style visualization from a detailed_results.json file."""
+    detailed_results_path = Path(detailed_results_path)
+    if output_path is None:
+        output_path = detailed_results_path.parent / "simulation_results.png"
+    else:
+        output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    :param detailed_results_path
-    """
-    output_path = os.path.join(
-        os.path.dirname(detailed_results_path), "simulation_results.png"
-    )
-
-    with open(detailed_results_path) as f:
+    with detailed_results_path.open() as f:
         data = json.load(f)
 
     loss_histories = []
@@ -160,9 +164,38 @@ def get_loss_acc_visu(detailed_results_path):
     ax.legend()
     ax.grid(True)
 
-    plt.savefig(output_path)
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Simulation plot saved to: {output_path}")
+    return output_path
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Generate Figure 12-style plots from MerLin detailed results."
+    )
+    parser.add_argument(
+        "--detailed-results",
+        type=Path,
+        dest="detailed_results",
+        help="Path to detailed_results.json produced by a MerLin run.",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        help="Optional output path for the generated PNG.",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = _parse_args()
+    detailed_path = args.detailed_results
+    if detailed_path is None:
+        detailed_path = Path(input("Enter the path to detailed_results.json: ").strip())
+    generate_simulation_plot(detailed_path, args.output)
 
 
 if __name__ == "__main__":
-    detailed_results_path = input("Enter the path to detailed_results.json: ").strip()
-    get_loss_acc_visu(detailed_results_path)
+    main()
