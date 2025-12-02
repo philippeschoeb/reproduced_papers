@@ -20,7 +20,9 @@ def make_pca(k: int, dataset: str = "mnist"):
         dataset_cls = _DATASET_MAP[dataset_key]
     except KeyError as exc:
         valid = ", ".join(sorted(_DATASET_MAP))
-        raise ValueError(f"Unknown dataset '{dataset}'. Valid options: {valid}.") from exc
+        raise ValueError(
+            f"Unknown dataset '{dataset}'. Valid options: {valid}."
+        ) from exc
 
     to_t = transforms.Compose([transforms.ToTensor()])
     base_tr = dataset_cls("./data", train=True, download=True, transform=to_t)
