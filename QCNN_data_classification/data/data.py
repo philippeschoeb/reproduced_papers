@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import torch
-from torchvision import datasets, transforms
 from sklearn.decomposition import PCA
+from torchvision import datasets, transforms
 
 _DATASET_MAP = {
     "mnist": datasets.MNIST,
