@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from utils.utils import plot_figure_5
+
 from .architecture_grid_run import run_architecture_grid
 from .paper_datasets import (
     CirclesDataset,
