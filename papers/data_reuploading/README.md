@@ -51,29 +51,26 @@ unzip data/overhead.zip -d data/
 
 ### Main Experiments
 
-The implementation supports three types of experiments:
+The implementation supports three types of experiment, all accessible from the repository root using `python implementation.py --paper data_reuploading`.
 
 #### 1. Reproduce Figure 5 (Default)
 Reproduces the main result showing accuracy vs number of layers for a specific dataset:
 
 ```bash
-# Default: Figure 5 reproduction on circles dataset
-python implementation.py
+# Default: Figure 5 reproduction on circles dataset (short version)
+python implementation.py --paper data_reuploading
 
 # With moons dataset
-python implementation.py --dataset moons
+python implementation.py --paper data_reuploading --dataset moons
 
 # With tetromino dataset
-python implementation.py --dataset tetromino
+python implementation.py --paper data_reuploading --dataset tetromino
 
 # With overhead MNIST dataset
-python implementation.py --dataset overhead
+python implementation.py --paper data_reuploading --dataset overhead
 
 # Using a config file
-python implementation.py --config configs/figure_5_circles.json
-
-# Quick test with fewer epochs and layers
-python implementation.py --config configs/quick_test.json
+python implementation.py --paper data_reuploading --config configs/figure_5_circles.json
 ```
 
 #### 2. Architecture Design Benchmark
@@ -89,13 +86,13 @@ This benchmark compares 9 different circuit designs (combinations of A, B, C dat
 
 ```bash
 # Run architecture benchmark on circles
-python implementation.py --design-benchmark --dataset circles
+python implementation.py --paper data_reuploading --design-benchmark --dataset circles
 
 # Run architecture benchmark on moons
-python implementation.py --design-benchmark --dataset moons
+python implementation.py --paper data_reuploading --design-benchmark --dataset moons
 
 # Using config file
-python implementation.py --config configs/design_benchmark_circles.json
+python implementation.py --paper data_reuploading --config configs/design_benchmark_circles.json
 ```
 
 #### 3. Tau/Alpha Parameter Benchmark
@@ -103,18 +100,18 @@ Explores hyperparameter space of tau (Fisher loss parameter) and alpha (phase sc
 
 ```bash
 # Run tau/alpha benchmark on moons
-python implementation.py --tau-alpha-benchmark --dataset moons
+python implementation.py --paper data_reuploading --tau-alpha-benchmark --dataset moons
 
 # Using config file
-python implementation.py --config configs/tau_alpha_benchmark_moons.json
+python implementation.py --paper data_reuploading --config configs/tau_alpha_benchmark_moons.json
 ```
 
 ### Command-line Options
 
-Main entry point: `implementation.py`
+Main entry point from the repository root: `implementation.py --paper data_reuploading`
 
 ```bash
-python implementation.py --help
+python implementation.py --paper data_reuploading --help
 ```
 
 **General Options:**
@@ -154,12 +151,11 @@ results/run_YYYYMMDD-HHMMSS/
 Configuration files are stored in `configs/` directory:
 
 **Available Configs:**
+- `defaults.json` - Figure 5 reproduction on circles dataset (short version)
 - `figure_5_circles.json` - Figure 5 reproduction on circles dataset
 - `figure_5_moons.json` - Figure 5 reproduction on moons dataset
 - `design_benchmark_circles.json` - 9-design architecture benchmark
 - `tau_alpha_benchmark_moons.json` - Tau/alpha parameter grid search
-- `quick_test.json` - Fast test with reduced parameters
-- `example.json` - Template configuration
 
 **Configuration Structure:**
 ```json
