@@ -12,7 +12,7 @@ def test_cli_help_exits_cleanly():
 
 
 def test_train_and_evaluate_writes_artifact(tmp_path, monkeypatch):
-    from data_reuploading.lib import runner as dr_runner
+    from lib import runner as dr_runner
 
     cfg = load_runtime_ready_config()
     markers: dict[str, bool] = {}

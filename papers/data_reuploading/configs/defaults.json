@@ -18,8 +18,8 @@
     "alpha": 0.3141592653589793,
     "tau": 1.0,
     "min_layers": 1,
-    "max_layers": 15,
-    "repetitions": 5,
+    "max_layers": 3,
+    "repetitions": 2,
     "designs": "AA"
   },
   "training": {
