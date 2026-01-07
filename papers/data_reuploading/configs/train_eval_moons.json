@@ -1,20 +1,20 @@
 {
+  "description": "Train/eval sweep on moons for Figure 5 metrics.",
   "seed": 42,
   "outdir": "results",
   "device": "cpu",
   "dataset": {
-    "name": "overhead",
-    "batch_size": 1776,
-    "train_size": 1776,
-    "test_size": 222
+    "name": "moons",
+    "batch_size": 400,
+    "train_size": 400,
+    "test_size": 100
   },
   "experiment": {
-    "type": "figure_5",
-    "dataset": "overhead",
+    "type": "train_eval",
+    "dataset": "moons",
     "alpha": 0.31415926535897934,
     "tau": 1.0,
-    "max_layers": 4,
-    "min_layers": 4,
+    "max_layers": 15,
     "repetitions": 5
   },
   "training": {
