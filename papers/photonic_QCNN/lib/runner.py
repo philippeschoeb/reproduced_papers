@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import logging
 import os
 import runpy
 import sys
@@ -25,6 +26,8 @@ PAPER_SCRIPT_MAP = {
     "Custom BAS": "run_custom_BAS_paper.py",
     "MNIST": "run_MNIST_paper.py",
 }
+
+LOGGER = logging.getLogger(__name__)
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -101,6 +104,7 @@ def run_merlin_pipeline(config: dict[str, Any]) -> dict[str, Any]:
         except Exception as exc:  # pragma: no cover - surface failure info
             results[dataset] = {"status": "failed", "error": str(exc)}
             print(f"MerLin run for {dataset} failed: {exc}")
+            LOGGER.exception("MerLin run for %s failed", dataset)
     return results
 
 
@@ -120,6 +124,7 @@ def run_paper_pipeline(datasets: list[str]) -> dict[str, Any]:
         except Exception as exc:  # pragma: no cover - bubble up info
             results[dataset] = {"status": "failed", "error": str(exc)}
             print(f"Paper run for {dataset} failed: {exc}")
+            LOGGER.exception("Paper run for %s failed", dataset)
     return results
 
 
@@ -249,6 +254,7 @@ def run_simulation_pipeline(outdir: str | None = None) -> dict[str, Any]:
             figure_paths[dataset] = str(figure_path)
         except Exception as exc:  # pragma: no cover - surface failure info
             print(f"[Figure12] Failed to plot {dataset}: {exc}")
+            LOGGER.exception("Figure12 plot for %s failed", dataset)
 
     print("Figure 12 simulation pipeline complete. Outputs stored in:", base_dir)
     return {
