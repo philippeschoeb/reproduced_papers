@@ -258,6 +258,36 @@ TorchQuantum models implement gate-based quantum circuits with qubits. Configura
   - Output fusion: concatenation (default), averaging, or weighted combination
 - **Second Module**: Quantum Processing Unit (QPU) with data re-uploading
   - Angle encoding → Re-uploading blocks → Main parameterized circuit → Single qubit measurement
+
+## Results
+
+> “We observe up to 3.14% improvements in accuracy over classical architectures of comparable model size, within the set of hyperparameters probed.”
+
+Classical baselines (5-fold mean±std with best test accuracy):
+
+| Model | Mean±Std | Best test | Params |
+| --- | --- | --- | --- |
+| SVM (C=1) | 0.8912±0.0038 | 0.8955 | 296 |
+| SVM (C=100) | 0.8889±0.0045 | 0.8932 | 435 |
+| Logistic Regression | 0.8888±0.0043 | 0.8933 | 769 |
+| NN [0] | 0.8886±0.0043 | 0.8934 | 1,538 |
+| NN [48] | 0.8897±0.0098 | 0.8946 | 37,010 |
+| NN [96] | 0.8912±0.0038 | 0.8933 | 74,018 |
+| NN [144] | 0.8839±0.0034 | 0.8896 | 111,026 |
+| NN [192] | 0.8827±0.0085 | 0.8901 | 148,034 |
+
+MerLin sweep snapshot (simple QuantumLayer): mode=8, 1 photon yields 0.8874±0.0071 with best test 0.8924.
+
+Best MerLin results by model type (from qLLM_results.doc):
+
+| MerLin model | Best test accuracy | Source table | `n_modes`| `n_photons`| `computation_space` | hidden dim |
+| --- | --- | --- | --- | --- |  --- | --- | 
+| merlin-basic (simple QuantumLayer) | 0.8951 | Using a simple QuantumLayer | 12 | 1 | UNBUNCHED | 8 |
+| merlin-parallel (angle encoding) | 0.8890±0.0069 | Using a similar architecture as in the paper (only angle encoding) | 12 | 4 | FOCK | 64 |
+| merlin-expectation (expectation values) | 0.8874±0.0092 | Using a similar architecture as in the paper (only angle encoding) but with expectation values | 12 modes | 2 photons | UNBUNCHED | 128 |
+| merlin-kernel (fidelity kernel) | 0.7460±0.0060 | Another approach using a Fidelity Kernel | 12 | 2 | FOCK | . |
+
+Note: the fidelity-kernel table reports mean±std only; the value above is the best mean observed.
 - **Output**: Linear layer combines both modules for final classification
 
 **Config parameters:**
