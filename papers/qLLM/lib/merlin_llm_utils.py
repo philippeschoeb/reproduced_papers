@@ -359,6 +359,10 @@ def marginalize_photon_presence(keys, probs):
 
     # Convert to float to allow matrix multiplication
     mask = mask.float()
+    
+    # Convert probs to float if complex (take absolute value squared to get real probabilities)
+    if probs.is_complex():
+        probs = torch.abs(probs) ** 2
 
     # Now do: (N, num_keys) @ (num_keys, num_modes) → (N, num_modes)
     marginalized = probs @ mask.T  # shape: (N, num_modes)

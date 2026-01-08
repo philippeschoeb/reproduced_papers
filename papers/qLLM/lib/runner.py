@@ -362,7 +362,7 @@ def train_kernel_method(args, train_dataset, eval_dataset, test_dataset):
             test_dataset["label"], svc_296_test_preds
         )
 
-        n_support_vectors_296 = model.n_support_.sum()
+        n_support_vectors_296 = int(model.n_support_.sum())
 
         print(
             f"   SVM (296 target) - Support vectors: {n_support_vectors_296}, Val: {svc_296_val_accuracy:.4f}, Test: {svc_296_test_accuracy:.4f}"
@@ -383,7 +383,7 @@ def train_kernel_method(args, train_dataset, eval_dataset, test_dataset):
             test_dataset["label"], svc_435_test_preds
         )
 
-        n_support_vectors_435 = model.n_support_.sum()
+        n_support_vectors_435 = int(model.n_support_.sum())
 
         print(
             f"   SVM (435 target) - Support vectors: {n_support_vectors_435}, Val: {svc_435_val_accuracy:.4f}, Test: {svc_435_test_accuracy:.4f}"
@@ -391,11 +391,11 @@ def train_kernel_method(args, train_dataset, eval_dataset, test_dataset):
 
         accuracy_dict = {
             "svm_296": {
-                "accuracy": svc_296_test_accuracy,
-                "suppport_vectors": n_support_vectors_296,
+                "accuracy": float(svc_296_test_accuracy),
+                "support_vectors": n_support_vectors_296,
             },
             "svm_435": {
-                "accuracy": svc_435_test_accuracy,
+                "accuracy": float(svc_435_test_accuracy),
                 "support_vectors": n_support_vectors_435,
             },
         }
