@@ -16,20 +16,27 @@ The codebase provides implementations of:
 **We strongly recommend generating embeddings using `generate_embeddings.py` in a separate environment** to avoid library conflicts between SetFit and TorchQuantum. These libraries have incompatible dependencies that can cause issues if used in the same environment.
 
 1. Create a separate conda/venv environment with SetFit installed
-2. Run `python src/generate_embeddings.py` in that environment
-3. Switch back to your main environment with TorchQuantum/MerLin for model training
+2. Install `requirements.txt` (or at least `setfit`, `datasets`, and `torch`) in that environment
+3. Run `python utils/generate_embeddings.py` from `papers/qLLM/` in that environment
+4. Switch back to your main environment with TorchQuantum/MerLin for model training
 
 ## Quick Start
 
-Run a model using the main script:
+Run a model using the shared CLI:
 
 ```bash
-python src/main.py --model [MODEL_TYPE]
+# From inside papers/qLLM
+python implementation.py --model [MODEL_TYPE]
+
+# From the repo root
+python implementation.py --paper qLLM --model [MODEL_TYPE]
 ```
+
+The CLI is defined in `configs/cli.json`, and defaults live in `configs/defaults.json`.
 
 ## Available Models
 
-### MerLin Models (`merlin_llm_utils.py`)
+### MerLin Models (`lib/merlin_llm_utils.py`)
 
 MerLin models use photonic quantum computing with interferometers and photon detection.
 
@@ -67,7 +74,7 @@ MerLin models use photonic quantum computing with interferometers and photon det
 #### 4. Kernel MerLin (`--model merlin-kernel`)
 Uses quantum kernel methods with MerLin circuits for similarity computation.
 
-### TorchQuantum Models (`torchquantum_utils.py`)
+### TorchQuantum Models (`lib/torchquantum_utils.py`)
 
 TorchQuantum models use gate-based quantum computing with qubits from [Quantum Large Language Model Fine Tuning](https://arxiv.org/abs/2504.08732).
 
@@ -92,12 +99,12 @@ TorchQuantum models use gate-based quantum computing with qubits from [Quantum L
 
 **Example configuration:**
 ```bash
-python src/main.py --model torchquantum \
+python implementation.py --model torchquantum \
   --encoder-configs '[{"n_qubits": 10, "n_layers": 2, "connectivity": 1}]' \
   --pqc-config '[{"n_qubits": 10, "n_main_layers": 2, "connectivity": 1, "n_reuploading": 2}]'
 ```
 
-### Classical Models (`classical_utils.py`)
+### Classical Models (`lib/classical_utils.py`)
 
 #### Multi-Layer Perceptrons (`--model mlps`)
 **Architecture:**
@@ -119,7 +126,7 @@ Standard logistic regression classifier.
 
 ### Basic MerLin Model
 ```bash
-python src/main.py --model merlin-basic \
+python implementation.py --model merlin-basic \
   --quantum-modes 8 \
   --hidden-dim 100 \
   --epochs 50 \
@@ -128,7 +135,7 @@ python src/main.py --model merlin-basic \
 
 ### Parallel MerLin with 2 encoders
 ```bash
-python src/main.py --model merlin-parallel \
+python implementation.py --model merlin-parallel \
   --quantum-modes 10 \
   --e-dim 2 \
   --no-bunching
@@ -137,7 +144,7 @@ python src/main.py --model merlin-parallel \
 ### TorchQuantum Model
 
 ```bash
-python src/main.py --model torchquantum \
+python implementation.py --model torchquantum \
   --encoder-configs '[{"n_qubits": 8, "n_layers": 2, "connectivity": 1}, {"n_qubits": 6, "n_layers": 1, "connectivity": 1}]' \
   --pqc-config '[{"n_qubits": 8, "n_main_layers": 3, "connectivity": 2, "n_reuploading": 2}]'
 ```
@@ -165,9 +172,9 @@ These ambiguities may lead to differences between our results and those reported
 
 ### Classical Comparison
 ```bash
-python src/main.py --model mlps --hidden-dim 100 --epochs 100
-python src/main.py --model svm
-python src/main.py --model log-reg
+python implementation.py --model mlps --hidden-dim 100 --epochs 100
+python implementation.py --model svm
+python implementation.py --model log-reg
 ```
 
 ## Command Line Arguments
@@ -222,8 +229,9 @@ Each split should contain embedding files that can be loaded by the `create_data
 
 ## Dependencies
 
+- `requirements.txt`: full reproduction stack (MerLin + TorchQuantum + SetFit)
 - `torch`: PyTorch framework
-- `merlin`: MerLin quantum computing framework  
+- `merlin`: MerLin quantum computing framework
 - `perceval`: Photonic quantum computing
 - `torchquantum`: Gate-based quantum ML
 - `sklearn`: Classical ML algorithms
@@ -232,11 +240,11 @@ Each split should contain embedding files that can be loaded by the `create_data
 ## Model Testing
 
 Both quantum frameworks include gradient propagation tests:
-- MerLin: `test_module_building_and_gradients()` in `merlin_llm_utils.py`
-- TorchQuantum: `test_gradient_propagation()` in `torchquantum_utils.py`
+- MerLin: `test_module_building_and_gradients()` in `lib/merlin_llm_utils.py`
+- TorchQuantum: `test_gradient_propagation()` in `lib/torchquantum_utils.py`
 
 Run tests individually:
 ```bash
-python src/merlin_llm_utils.py
-python src/torchquantum_utils.py
+python lib/merlin_llm_utils.py
+python lib/torchquantum_utils.py
 ```

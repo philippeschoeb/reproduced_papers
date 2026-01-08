@@ -1,199 +1,87 @@
-import argparse
 import ast
 import json
+import logging
+from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from classical_utils import MLPClassifier, evaluate
-from data_utils import create_dataset_from_embeddings
-from merlin_kernel import create_setfit_with_q_kernel
-
-# Import utility modules
-from merlin_llm_utils import (
-    QuantumClassifier,
-    QuantumClassifierExpectation,
-    QuantumClassifierParallel,
-)
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
-from sklearn.svm import SVC
-from torch.utils.data import DataLoader
-from torchquantum_utils import QLLM
 
 
-def parse_config_list(config_string: str) -> list[dict[str, Any]]:
-    """
-    Parse a string representation of list[dict] into actual Python objects.
-    Supports both JSON and Python literal formats.
-    """
-    config_string = config_string.strip()
+def _parse_config_list(raw: Any) -> list[dict[str, Any]]:
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        if not all(isinstance(item, dict) for item in raw):
+            raise ValueError("All items in config list must be dictionaries")
+        return raw
+    if not isinstance(raw, str):
+        raise ValueError(f"Unsupported config list type: {type(raw)}")
+    config_string = raw.strip()
+    if not config_string:
+        return []
 
-    # Try JSON parsing first (more robust)
     try:
         config_list = json.loads(config_string)
         if not isinstance(config_list, list):
             raise ValueError("Config must be a list")
-        for item in config_list:
-            if not isinstance(item, dict):
-                raise ValueError("All items in config list must be dictionaries")
+        if not all(isinstance(item, dict) for item in config_list):
+            raise ValueError("All items in config list must be dictionaries")
         return config_list
     except json.JSONDecodeError:
         pass
 
-    # Fall back to Python literal evaluation
     try:
         config_list = ast.literal_eval(config_string)
         if not isinstance(config_list, list):
             raise ValueError("Config must be a list")
-        for item in config_list:
-            if not isinstance(item, dict):
-                raise ValueError("All items in config list must be dictionaries")
+        if not all(isinstance(item, dict) for item in config_list):
+            raise ValueError("All items in config list must be dictionaries")
         return config_list
-    except (ValueError, SyntaxError) as e:
-        raise argparse.ArgumentTypeError(f"Invalid config format: {e}") from e
+    except (ValueError, SyntaxError) as exc:
+        raise ValueError(f"Invalid config format: {exc}") from exc
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Train QLLM with classical and quantum heads"
-    )
+def _build_args(cfg: dict[str, Any]) -> SimpleNamespace:
+    dataset_cfg = cfg.get("dataset", {})
+    embeddings_cfg = cfg.get("embeddings", {})
+    model_cfg = cfg.get("model", {})
+    training_cfg = cfg.get("training", {})
+    runtime_cfg = cfg.get("runtime", {})
 
-    ### Dataset parameters ###
-    parser.add_argument("--dataset", type=str, default="sst2", help="Dataset name")
-    parser.add_argument(
-        "--eval-size", type=int, default=250, help="Validation set size"
+    args = SimpleNamespace(
+        dataset=dataset_cfg.get("name", "sst2"),
+        eval_size=dataset_cfg.get("eval_size", 250),
+        embeddings_dir=str(dataset_cfg.get("embeddings_dir", "embeddings")),
+        model_name=embeddings_cfg.get(
+            "model_name", "sentence-transformers/paraphrase-mpnet-base-v2"
+        ),
+        embedding_dim=model_cfg.get("embedding_dim", 768),
+        hidden_dim=model_cfg.get("hidden_dim", 100),
+        epochs=training_cfg.get("epochs", 5),
+        learning_rate=training_cfg.get("learning_rate", 1e-5),
+        batch_size=training_cfg.get("batch_size", 16),
+        kernel_batch_size=training_cfg.get("kernel_batch_size", 32),
+        model=model_cfg.get("name", "merlin-basic"),
+        quantum_modes=model_cfg.get("quantum_modes", 8),
+        no_bunching=model_cfg.get("no_bunching", False),
+        photons=model_cfg.get("photons", 0),
+        encoder_configs=_parse_config_list(model_cfg.get("encoder_configs")),
+        pqc_config=_parse_config_list(model_cfg.get("pqc_config")),
+        e_dim=model_cfg.get("e_dim", 1),
+        input_state=model_cfg.get("input_state"),
+        seed=cfg.get("seed", 42),
+        device=cfg.get("device", "auto"),
+        no_plot=runtime_cfg.get("no_plot", False),
+        verbose=runtime_cfg.get("verbose", False),
     )
-
-    ### Model parameters ###
-    parser.add_argument(
-        "--model-name",
-        type=str,
-        default="sentence-transformers/paraphrase-mpnet-base-v2",
-        help="Pre-trained model name",
-    )
-    parser.add_argument(
-        "--embedding-dim", type=int, default=768, help="Embedding dimension"
-    )
-
-    ### embedding compression ###
-    parser.add_argument(
-        "--hidden-dim",
-        type=int,
-        default=100,
-        help="Hidden dimension for MLP/Quantum layers",
-    )
-
-    ### MODEL HEAD TRAINING ###
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default=5,
-        help="Epochs for classification head training",
-    )
-    parser.add_argument(
-        "--learning-rate",
-        type=float,
-        default=1e-5,
-        help="Learning rate for body fine-tuning",
-    )
-    parser.add_argument(
-        "--batch-size", type=int, default=16, help="Batch size for evaluation"
-    )
-    parser.add_argument(
-        "--kernel-batch-size",
-        type=int,
-        default=32,
-        help="Batch size for kernel computation in merlin-kernel method",
-    )
-
-    ### MODEL CHOICE ###
-    parser.add_argument(
-        "--model",
-        choices=[
-            "merlin-basic",
-            "merlin-parallel",
-            "merlin-expectation",
-            "merlin-kernel",
-            "torchquantum",
-            "mlps",
-            "svm",
-            "log-reg",
-        ],
-        default="merlin-basic",
-    )
-
-    ### MerLin parameters ###
-    parser.add_argument(
-        "--quantum-modes",
-        type=int,
-        default=8,
-        help="Number of quantum modes for MerLin model",
-    )
-    parser.add_argument(
-        "--no-bunching",
-        action="store_true",
-        help="No bunching parameter for the MerLin model",
-    )
-    parser.add_argument(
-        "--photons",
-        type=int,
-        default=0,
-        help="Number of photons max (0 stands for modes/2) to be used in the interferometer",
-    )
-
-    ### TorchQuantum parameters ###
-    parser.add_argument(
-        "--encoder-configs",
-        type=parse_config_list,
-        default=[
-            {"n_qubits": 10, "n_layers": 1, "connectivity": 1},
-            {"n_qubits": 10, "n_layers": 1, "connectivity": 1},
-        ],
-        help="List of config dictionaries as JSON or Python literal",
-    )
-
-    parser.add_argument(
-        "--pqc-config",
-        type=parse_config_list,
-        default=[
-            {"n_qubits": 10, "n_main_layers": 2, "connectivity": 1, "n_reuploading": 2}
-        ],
-        help="List of config dictionaries as JSON or Python literal",
-    )
-
-    # Both models: parallel encoding #
-    parser.add_argument(
-        "--e_dim",
-        type=int,
-        default=1,
-        help="Parallel encoder",
-    )
-
-    # Execution parameters
-    parser.add_argument("--seed", type=int, default=42, help="Random seed")
-    parser.add_argument(
-        "--device", type=str, default="auto", help="Device to use (cuda/cpu/auto)"
-    )
-    parser.add_argument("--no-plot", action="store_true", help="Skip plotting results")
-    parser.add_argument("--verbose", action="store_true", help="Verbose output")
-
-    return parser.parse_args()
-
-
-def collate_fn(batch):
-    embeddings = torch.stack(
-        [torch.tensor(item["embedding"], dtype=torch.float32) for item in batch]
-    )
-    labels = torch.tensor([item["label"] for item in batch], dtype=torch.long)
-
-    return {"embedding": embeddings, "label": labels}
+    return args
 
 
 def setup_environment(args):
     """Set up random seeds and device"""
+    import torch
+
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
@@ -205,7 +93,6 @@ def setup_environment(args):
     if args.verbose:
         print(f"Using device: {device}")
         print("Configuration:")
-        print(f"- Samples per class: {args.samples_per_class}")
         print(f"- Head training epochs: {args.epochs}")
         print(f"- Learning rate: {args.learning_rate}")
 
@@ -213,19 +100,32 @@ def setup_environment(args):
 
 
 def train_model(model, train_dataset, eval_dataset, test_dataset, args):
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
+    from torch.utils.data import DataLoader
+
+    def collate_fn(batch):
+        embeddings = torch.stack(
+            [torch.tensor(item["embedding"], dtype=torch.float32) for item in batch]
+        )
+        labels = torch.tensor([item["label"] for item in batch], dtype=torch.long)
+
+        return {"embedding": embeddings, "label": labels}
+
     # Prepare dataset
     train_dataset.set_format(type="torch", columns=["embedding", "label"])
     eval_dataset.set_format(type="torch", columns=["embedding", "label"])
     test_dataset.set_format(type="torch", columns=["embedding", "label"])
 
     train_loader = DataLoader(
-        train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn
+        train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn
     )
     val_loader = DataLoader(
-        eval_dataset, batch_size=16, shuffle=False, collate_fn=collate_fn
+        eval_dataset, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn
     )
     test_loader = DataLoader(
-        test_dataset, batch_size=16, shuffle=False, collate_fn=collate_fn
+        test_dataset, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn
     )
 
     # Loss function and optimizer
@@ -328,6 +228,8 @@ def train_model(model, train_dataset, eval_dataset, test_dataset, args):
 
 def pick_model(args, device):
     if args.model == "merlin-basic":
+        from .merlin_llm_utils import QuantumClassifier
+
         print(
             f"Embedding dimension: {args.embedding_dim}, hidden_dim : {args.hidden_dim}"
         )
@@ -342,6 +244,8 @@ def pick_model(args, device):
         )
         model_name = args.model
     elif args.model == "merlin-parallel":
+        from .merlin_llm_utils import QuantumClassifierParallel
+
         model = QuantumClassifierParallel(
             input_dim=args.embedding_dim,
             hidden_dim=args.hidden_dim,
@@ -352,6 +256,8 @@ def pick_model(args, device):
         )
         model_name = args.model
     elif args.model == "merlin-expectation":
+        from .merlin_llm_utils import QuantumClassifierExpectation
+
         model = QuantumClassifierExpectation(
             input_dim=args.embedding_dim,
             hidden_dim=args.hidden_dim,
@@ -362,11 +268,15 @@ def pick_model(args, device):
         )
         model_name = args.model
     elif args.model == "torchquantum":
+        from .torchquantum_utils import QLLM
+
         model = QLLM(
             encoder_configs=args.encoder_configs, qpu_config=args.pqc_config[0]
         )
         model_name = args.model
     elif args.model == "mlps":
+        from .classical_utils import MLPClassifier
+
         model = []
         hidden_dims = [0, 48, 96, 144, 192]
         for hidden_dim in hidden_dims:
@@ -381,6 +291,13 @@ def pick_model(args, device):
 
 
 def train_kernel_method(args, train_dataset, eval_dataset, test_dataset):
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import accuracy_score
+    from sklearn.svm import SVC
+
+    if args.model == "merlin-kernel":
+        from .merlin_kernel import create_setfit_with_q_kernel
+
     train_embeddings = np.array(train_dataset["embedding"])
     eval_embeddings = np.array(eval_dataset["embedding"])
     test_embeddings = np.array(test_dataset["embedding"])
@@ -436,11 +353,13 @@ def train_kernel_method(args, train_dataset, eval_dataset, test_dataset):
         model = SVC(C=1.0, kernel="rbf", gamma="scale", probability=True)
         model.fit(train_embeddings, train_dataset["label"])
 
-        svc_296_val_accuracy, _ = evaluate(
-            model, eval_embeddings, eval_dataset["label"]
+        svc_296_val_preds = model.predict(eval_embeddings)
+        svc_296_test_preds = model.predict(test_embeddings)
+        svc_296_val_accuracy = accuracy_score(
+            eval_dataset["label"], svc_296_val_preds
         )
-        svc_296_test_accuracy, _ = evaluate(
-            model, test_embeddings, test_dataset["label"]
+        svc_296_test_accuracy = accuracy_score(
+            test_dataset["label"], svc_296_test_preds
         )
 
         n_support_vectors_296 = model.n_support_.sum()
@@ -455,11 +374,13 @@ def train_kernel_method(args, train_dataset, eval_dataset, test_dataset):
         model = SVC(C=100.0, kernel="rbf", gamma="scale", probability=True)
         model.fit(train_embeddings, train_dataset["label"])
 
-        svc_435_val_accuracy, _ = evaluate(
-            model, eval_embeddings, eval_dataset["label"]
+        svc_435_val_preds = model.predict(eval_embeddings)
+        svc_435_test_preds = model.predict(test_embeddings)
+        svc_435_val_accuracy = accuracy_score(
+            eval_dataset["label"], svc_435_val_preds
         )
-        svc_435_test_accuracy, _ = evaluate(
-            model, test_embeddings, test_dataset["label"]
+        svc_435_test_accuracy = accuracy_score(
+            test_dataset["label"], svc_435_test_preds
         )
 
         n_support_vectors_435 = model.n_support_.sum()
@@ -484,8 +405,12 @@ def train_kernel_method(args, train_dataset, eval_dataset, test_dataset):
         model = LogisticRegression()
         model.fit(train_embeddings, train_dataset["label"])
 
-        lg_val_accuracy, _ = evaluate(model, eval_embeddings, eval_dataset["label"])
-        lg_test_accuracy, _ = evaluate(model, test_embeddings, test_dataset["label"])
+        lg_val_accuracy = accuracy_score(
+            eval_dataset["label"], model.predict(eval_embeddings)
+        )
+        lg_test_accuracy = accuracy_score(
+            test_dataset["label"], model.predict(test_embeddings)
+        )
 
         print(
             f"Logistic Regression - Val: {lg_val_accuracy:.4f}, Test: {lg_test_accuracy:.4f}"
@@ -495,53 +420,87 @@ def train_kernel_method(args, train_dataset, eval_dataset, test_dataset):
     return accuracy_dict
 
 
-if __name__ == "__main__":
-    print("Entering main loop")
-    args = parse_args()
-    args.input_state = None
-    print("Parsing done")
-    device = setup_environment(args)
-    print("Device selected")
-    use_normalization = False
+def train_and_evaluate(cfg: dict[str, Any], run_dir: Path) -> None:
+    logger = logging.getLogger(__name__)
+    args = _build_args(cfg)
 
-    if args.model[:6] == "merlin":
-        if args.photons == 0:
+    def _skip(note: str) -> None:
+        logger.warning(note)
+        (run_dir / "SKIPPED.txt").write_text(f"{note}\n", encoding="utf-8")
+
+    embeddings_dir = Path(args.embeddings_dir)
+    required_files = [
+        embeddings_dir / "train_embeddings.json",
+        embeddings_dir / "eval_embeddings.json",
+        embeddings_dir / "test_embeddings.json",
+    ]
+    missing_files = [path for path in required_files if not path.exists()]
+    if missing_files:
+        missing_list = "\n".join(f"- {path}" for path in missing_files)
+        note = (
+            "Embeddings are missing; generate them with "
+            "`python utils/generate_embeddings.py` from `papers/qLLM/`.\n"
+            f"Missing files:\n{missing_list}\n"
+        )
+        _skip(note.strip())
+        return
+
+    if args.model in {"svm", "log-reg"}:
+        device = None
+        np.random.seed(args.seed)
+    else:
+        try:
+            device = setup_environment(args)
+        except ImportError as exc:
+            _skip(
+                f"Missing dependency for model '{args.model}': {exc}. "
+                "Install `papers/qLLM/requirements-full.txt` with a supported Python "
+                "version (3.10–3.12) to run quantum models."
+            )
+            return
+        if args.model.startswith("merlin") and args.photons == 0:
             args.photons = args.quantum_modes // 2
 
-    # load data
-    print("Loading pre-computed embeddings from ./embeddings directory...")
-    train_dataset = create_dataset_from_embeddings("./embeddings", split_name="train")
-    test_dataset = create_dataset_from_embeddings("./embeddings", split_name="test")
-    eval_dataset = create_dataset_from_embeddings("./embeddings", split_name="eval")
+    logger.info("Loading embeddings from %s", embeddings_dir)
+    from .data_utils import create_dataset_from_embeddings
 
-    model_setup = pick_model(args, device)
+    train_dataset = create_dataset_from_embeddings(str(embeddings_dir), "train")
+    test_dataset = create_dataset_from_embeddings(str(embeddings_dir), "test")
+    eval_dataset = create_dataset_from_embeddings(str(embeddings_dir), "eval")
+
+    try:
+        model_setup = pick_model(args, device)
+    except ImportError as exc:
+        note = (
+            f"Missing dependency for model '{args.model}': {exc}. "
+            "Install `papers/qLLM/requirements-full.txt` with a supported Python "
+            "version (3.10–3.12) to run quantum models."
+        )
+        _skip(note)
+        return
     model_name = list(model_setup.keys())[0]
+    results: dict[str, Any] = {"model": model_name, "entries": []}
 
     if model_name == "kernel_method":
-        print(f"\n{'=' * 60}")
-        print(f"\n  Training {args.model} method")
-        print(f"\n{'=' * 60}")
+        logger.info("Training %s kernel method", args.model)
         accuracy_dict = train_kernel_method(
             args, train_dataset, eval_dataset, test_dataset
         )
-
+        results["kernel_metrics"] = accuracy_dict
     else:
-        print(f"\n{'=' * 60}")
-        print(f"\n  Training the {model_name}")
-        print(f"\n{'=' * 60}")
+        logger.info("Training %s", model_name)
         for model in model_setup[model_name]:
-            trained_model, best_val_acc, test_acc = train_model(
+            _, best_val_acc, test_acc = train_model(
                 model, train_dataset, eval_dataset, test_dataset, args
             )
-
-            print(f"\n{'*' * 60}")
+            entry = {
+                "val_accuracy": best_val_acc,
+                "test_accuracy": test_acc,
+            }
             if model_name == "mlps":
-                print(model)
-            print(
-                f"\n  Best model ({model_name}) with a TEST accuracy of {test_acc:.4f} and a VAL accuracy of {best_val_acc:.4f} "
-            )
-            print(f"\n{'*' * 60}")
+                entry["model"] = repr(model)
+            results["entries"].append(entry)
 
-    print(f"\n{'=' * 60}")
-    print("\n  Training is complete")
-    print(f"\n{'=' * 60}")
+    metrics_path = run_dir / "metrics.json"
+    metrics_path.write_text(json.dumps(results, indent=2), encoding="utf-8")
+    logger.info("Saved metrics to %s", metrics_path)

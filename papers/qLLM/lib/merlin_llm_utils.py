@@ -139,7 +139,7 @@ class QuantumClassifier(nn.Module):
         num_classes=2,
         input_state=None,
         device="cpu",
-        no_bunching=False,
+        no_bunching =False,
     ):
         super().__init__()
         print(
@@ -167,18 +167,17 @@ class QuantumClassifier(nn.Module):
         # build the QLayer with a linear output as in the original paper
         # "The measurement output of the second module is then passed through a single Linear layer"
         print("\n -> self.q_circuit")
+        computation_space = ml.ComputationSpace.FOCK if not no_bunching else ml.ComputationSpace.UNBUNCHED
         self.q_circuit = ml.QuantumLayer(
             input_size=hidden_dim,
-            output_size=None,  # but we do not use it
             circuit=circuit,
             trainable_parameters=[
                 p.name for p in circuit.get_parameters() if not p.name.startswith("px")
             ],
             input_parameters=["px"],
             input_state=input_state,
-            output_mapping_strategy=ml.OutputMappingStrategy.NONE,
             device=device,
-            no_bunching=no_bunching,
+            computation_space = computation_space,
         )
         self.bn = nn.LayerNorm(output_size_slos).requires_grad_(False)  # works OK
         print(f"\n -- Building the Linear layer with output size = {num_classes} -- ")
@@ -214,7 +213,7 @@ class QuantumClassifierParallel(nn.Module):
         num_classes=2,
         input_state=None,
         device="cpu",
-        no_bunching=False,
+        no_bunching =False,
         e=1,
     ):
         super().__init__()
@@ -241,7 +240,6 @@ class QuantumClassifierParallel(nn.Module):
 
         self.q_circuit_1 = ml.QuantumLayer(
             input_size=hidden_dim,
-            output_size=None,  # but we do not use it
             circuit=circuit_1,
             trainable_parameters=[
                 p.name
@@ -250,14 +248,12 @@ class QuantumClassifierParallel(nn.Module):
             ],
             input_parameters=["px"],
             input_state=input_state,
-            output_mapping_strategy=ml.OutputMappingStrategy.NONE,
             device=device,
-            no_bunching=True,
+            computation_space = ml.ComputationSpace.UNBUNCHED,
         )
         if self.E == 2:
             self.q_circuit_2 = ml.QuantumLayer(
                 input_size=hidden_dim,
-                output_size=None,  # but we do not use it
                 circuit=circuit_2,
                 trainable_parameters=[
                     p.name
@@ -266,9 +262,8 @@ class QuantumClassifierParallel(nn.Module):
                 ],
                 input_parameters=["px"],
                 input_state=input_state,
-                output_mapping_strategy=ml.OutputMappingStrategy.NONE,
                 device=device,
-                no_bunching=True,
+                computation_space = ml.ComputationSpace.UNBUNCHED,
             )
 
         output_encoder = math.comb(modes, photons_count)
@@ -287,7 +282,6 @@ class QuantumClassifierParallel(nn.Module):
 
         self.q_circuit_final = ml.QuantumLayer(
             input_size=self.E * output_encoder,
-            output_size=None,  # but we do not use it
             circuit=circuit_final,
             trainable_parameters=[
                 p.name
@@ -296,9 +290,8 @@ class QuantumClassifierParallel(nn.Module):
             ],
             input_parameters=["px"],
             input_state=input_state,
-            output_mapping_strategy=ml.OutputMappingStrategy.NONE,
             device=device,
-            no_bunching=no_bunching,
+            computation_space = ml.ComputationSpace.FOCK if not no_bunching else ml.ComputationSpace.UNBUNCHED,
         )
 
         # build the QLayer with a linear output as in the original paper
@@ -408,7 +401,6 @@ class QuantumClassifierExpectation(nn.Module):
 
         self.q_circuit_1 = ml.QuantumLayer(
             input_size=hidden_dim,
-            output_size=None,  # but we do not use it
             circuit=circuit_1,
             trainable_parameters=[
                 p.name
@@ -417,14 +409,12 @@ class QuantumClassifierExpectation(nn.Module):
             ],
             input_parameters=["px"],
             input_state=input_state,
-            output_mapping_strategy=ml.OutputMappingStrategy.NONE,
             device=device,
-            no_bunching=True,
+            computation_space = ml.ComputationSpace.UNBUNCHED,
         )
         if self.E == 2:
             self.q_circuit_2 = ml.QuantumLayer(
                 input_size=hidden_dim,
-                output_size=None,  # but we do not use it
                 circuit=circuit_2,
                 trainable_parameters=[
                     p.name
@@ -433,9 +423,8 @@ class QuantumClassifierExpectation(nn.Module):
                 ],
                 input_parameters=["px"],
                 input_state=input_state,
-                output_mapping_strategy=ml.OutputMappingStrategy.NONE,
                 device=device,
-                no_bunching=True,
+                computation_space = ml.ComputationSpace.UNBUNCHED,
             )
 
         # We generate the keys associated with the probs
@@ -464,7 +453,6 @@ class QuantumClassifierExpectation(nn.Module):
 
         self.q_circuit_final = ml.QuantumLayer(
             input_size=self.E * output_encoder,
-            output_size=None,  # but we do not use it
             circuit=circuit_final,
             trainable_parameters=[
                 p.name
@@ -473,9 +461,8 @@ class QuantumClassifierExpectation(nn.Module):
             ],
             input_parameters=["px"],
             input_state=input_state,
-            output_mapping_strategy=ml.OutputMappingStrategy.NONE,
             device=device,
-            no_bunching=no_bunching,
+            computation_space = ml.ComputationSpace.FOCK if not no_bunching else ml.ComputationSpace.UNBUNCHED,
         )
 
         # PNR output size
@@ -577,7 +564,7 @@ def test_module_building_and_gradients():
                 modes=modes,
                 num_classes=num_classes,
                 device=device,
-                no_bunching=False,
+                computation_space = ml.ComputationSpace.FOCK,
             )
             print(f"   ✓ {name} instantiated successfully")
 

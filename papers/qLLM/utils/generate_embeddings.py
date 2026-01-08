@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
 """
 Script to generate sentence transformer embeddings and save them as JSON files.
-Uses the same data loading approach as main.py.
+Uses the same data loading approach as the qLLM runner.
 """
 
 import argparse
 import json
 import os
+import sys
+from pathlib import Path
 
 import numpy as np
-from data_utils import load_data
-from setfit_utils import load_model
+
+PROJECT_DIR = Path(__file__).resolve().parents[1]
+if str(PROJECT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_DIR))
+
+from lib.data_utils import load_data
+from lib.setfit_utils import load_model
 
 
 def save_embeddings_to_json(
@@ -54,7 +61,7 @@ def parse_args():
         description="Generate and save sentence transformer embeddings"
     )
 
-    # Data parameters (same as main.py)
+    # Data parameters (mirrors the runner configuration)
     parser.add_argument("--dataset", type=str, default="sst2", help="Dataset name")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
@@ -97,7 +104,7 @@ def main():
         print(f"Model: {args.model_name}")
         print(f"Output directory: {args.output_dir}")
 
-    # Load data using the same function as main.py
+    # Load data using the same function as the runner
     print("Loading data...")
     train_dataset, eval_dataset, test_dataset, features, labels = load_data(args)
 
