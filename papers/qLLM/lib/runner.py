@@ -462,7 +462,7 @@ def train_and_evaluate(cfg: dict[str, Any], run_dir: Path) -> None:
             args.photons = args.quantum_modes // 2
 
     logger.info("Loading embeddings from %s", embeddings_dir)
-    from .data_utils import create_dataset_from_embeddings
+    from papers.shared.qLLM.data_utils import create_dataset_from_embeddings
 
     train_dataset = create_dataset_from_embeddings(str(embeddings_dir), "train")
     test_dataset = create_dataset_from_embeddings(str(embeddings_dir), "test")

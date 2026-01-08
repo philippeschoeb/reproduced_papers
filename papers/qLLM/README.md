@@ -39,7 +39,6 @@ qLLM/
 │   ├── torchquantum_utils.py    # TorchQuantum models
 │   ├── classical_utils.py       # Classical models
 │   ├── merlin_kernel.py         # Quantum kernel methods
-│   ├── data_utils.py            # Dataset utilities
 │   ├── setfit_utils.py          # SetFit utilities
 │   └── runner.py                # Training runner
 ├── embeddings/          # Pre-computed embeddings (train/eval/test splits)
@@ -50,6 +49,8 @@ qLLM/
 ├── qllm.ipynb          # Jupyter notebook examples
 └── requirements.txt     # Dependencies
 ```
+
+Dataset helpers live in `papers/shared/qLLM/data_utils.py` so they can be reused across papers.
 ## Configuration System
 
 The project uses JSON-based configuration files to specify model parameters. The CLI system allows overriding config values via command-line arguments.
@@ -454,7 +455,7 @@ The models expect pre-computed embeddings in `./embeddings/` directory with:
 - `eval/` split for validation data  
 - `test/` split for test data
 
-Each split should contain embedding files that can be loaded by the `create_dataset_from_embeddings` function in `data_utils.py`.
+Each split should contain embedding files that can be loaded by the `create_dataset_from_embeddings` function in `papers/shared/qLLM/data_utils.py`.
 
 ## Architecture Comparison
 
