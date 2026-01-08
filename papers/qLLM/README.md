@@ -278,7 +278,7 @@ Classical baselines (5-fold mean±std with best test accuracy):
 
 MerLin sweep snapshot (simple QuantumLayer): mode=8, 1 photon yields 0.8874±0.0071 with best test 0.8924.
 
-Best MerLin results by model type (from qLLM_results.doc):
+Best MerLin results by model type (for 200 epochs):
 
 | MerLin model | Best test accuracy | Source table | `n_modes`| `n_photons`| `computation_space` | hidden dim |
 | --- | --- | --- | --- | --- |  --- | --- | 
