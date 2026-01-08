@@ -4,6 +4,14 @@ This repository implements various quantum and classical machine learning models
 
 **Dataset**: SST-2 (Stanford Sentiment Treebank) binary sentiment classification dataset from [Hugging Face](https://huggingface.co/datasets/SetFit/sst2)
 
+## Reference and Attribution
+
+- Paper: Quantum Large Language Model Fine Tuning (arXiv, 2025)
+- Authors: Quantum Large Language Model Fine-Tuning
+- DOI/ArXiv: https://arxiv.org/abs/2504.08732
+- Original repository (if any): Not specified in the paper.
+- License and attribution notes: Cite the paper above and this reproduction repository when using these results or code.
+
 ## Overview
 
 The codebase provides implementations of:
@@ -199,6 +207,14 @@ python implementation.py --paper qLLM --config configs/merlin-basic.json
 
 # Override parameters via CLI
 python implementation.py --config configs/merlin-basic.json --learning-rate 1e-5 --epochs 100
+```
+
+## Install Dependencies
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 The CLI schema is defined in `configs/cli.json`. Default values are in `configs/defaults.json`. Model-specific configs are in `configs/[model-name].json`.
