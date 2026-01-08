@@ -270,9 +270,9 @@ def pick_model(args, device):
     elif args.model == "torchquantum":
         from .torchquantum_utils import QLLM
 
-        model = QLLM(
-            encoder_configs=args.encoder_configs, qpu_config=args.pqc_config[0]
-        )
+        encoder_configs = args.encoder_configs or None
+        qpu_config = args.pqc_config[0] if args.pqc_config else None
+        model = QLLM(encoder_configs=encoder_configs, qpu_config=qpu_config)
         model_name = args.model
     elif args.model == "mlps":
         from .classical_utils import MLPClassifier
@@ -341,7 +341,7 @@ def train_kernel_method(args, train_dataset, eval_dataset, test_dataset):
             accuracies.append(accuracy)
         mean_accuracy = sum(accuracies) / len(accuracies)
         print(f"Mean Accuracy: {mean_accuracy * 100:.4f}")
-        accuracy_dict = {args.model: accuracy}
+        accuracy_dict = {args.model: float(mean_accuracy)}
 
     elif args.model == "svm":
         # SVM with varying parameter counts (targeting 296 and 435 parameters)
