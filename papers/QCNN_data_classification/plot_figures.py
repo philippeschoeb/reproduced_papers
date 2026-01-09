@@ -18,7 +18,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from model import QConvModel, build_quantum_kernels
+from models import QConvModel, build_quantum_kernels
 
 PCA_OPTIONS = (16,)
 NB_KERNELS = (2, 3)
