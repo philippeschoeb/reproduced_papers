@@ -6,7 +6,7 @@ from copy import deepcopy
 import perceval as pcvl
 import torch
 import torch.nn as nn
-from merlin import OutputMappingStrategy, QuantumLayer
+from merlin import QuantumLayer
 
 
 class ScaleLayer(nn.Module):
@@ -68,16 +68,6 @@ def create_vqc_general(num_modes: int, input_size: int) -> pcvl.Circuit:
     return circuit
 
 
-def _resolve_output_strategy(name: str | None) -> OutputMappingStrategy:
-    if not name:
-        return OutputMappingStrategy.LINEAR
-    name = name.upper()
-    try:
-        return OutputMappingStrategy[name]
-    except KeyError as err:
-        raise ValueError(f"Unknown OutputMappingStrategy: {name}") from err
-
-
 def build_model(
     initial_state: Iterable[int],
     cfg: dict,
@@ -88,21 +78,21 @@ def build_model(
     trainable_params = cfg.get("trainable_parameters", ["theta"])
     input_parameters = cfg.get("input_parameters", ["px"])
     no_bunching = bool(cfg.get("no_bunching", False))
-    output_strategy = _resolve_output_strategy(cfg.get("output_mapping_strategy"))
 
     scale_layer = ScaleLayer(input_size, scale_type=scale_type)
     vqc = QuantumLayer(
         input_size=input_size,
-        output_size=1,
         circuit=create_vqc_general(num_modes, input_size),
         trainable_parameters=trainable_params,
         input_parameters=input_parameters,
         input_state=list(initial_state),
         no_bunching=no_bunching,
-        output_mapping_strategy=output_strategy,
     )
 
-    return nn.Sequential(scale_layer, vqc)
+    linear_layer = nn.Linear(vqc.output_size, 1)
+    model = nn.Sequential(scale_layer, vqc, linear_layer)
+
+    return model
 
 
 class VQCFactory:
