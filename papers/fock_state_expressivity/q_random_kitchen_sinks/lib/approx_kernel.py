@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import perceval as pcvl
 import torch
-from merlin import OutputMappingStrategy, QuantumLayer
+from merlin import QuantumLayer
 
 
 def sample_random_features(r: int, seed: int):
@@ -62,8 +62,6 @@ def build_quantum_model(cfg: dict):
     circuit_type = cfg.get("circuit", "mzi")
     num_photons = int(cfg.get("num_photon", 10))
     no_bunching = bool(cfg.get("no_bunching", False))
-    mapping = cfg.get("output_mapping_strategy", "LINEAR").upper()
-
     if circuit_type == "mzi":
         circuit = build_mzi()
         trainable = []
@@ -78,20 +76,14 @@ def build_quantum_model(cfg: dict):
     else:
         input_state = [num_photons // 2 + 1, num_photons // 2]
 
-    strategy = getattr(OutputMappingStrategy, mapping, OutputMappingStrategy.LINEAR)
-    output_size = None if strategy == OutputMappingStrategy.NONE else 1
-
     layer = QuantumLayer(
         input_size=1,
-        output_size=output_size,
         circuit=circuit,
         trainable_parameters=trainable,
         input_parameters=["data"],
         input_state=input_state,
         no_bunching=no_bunching,
-        output_mapping_strategy=strategy,
     )
+    model = torch.nn.Sequential(layer, torch.nn.Linear(layer.output_size, 1))
 
-    if strategy == OutputMappingStrategy.NONE:
-        return torch.nn.Sequential(layer, torch.nn.Linear(layer.output_size, 1))
-    return layer
+    return model
