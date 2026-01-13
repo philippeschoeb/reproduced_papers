@@ -1,5 +1,5 @@
 {
-  "description": "Default config for Gaussian kernel sampler/classifier reproduction (Algorithm 2).",
+  "description": "Sample config for a Gaussian kernel sampler run.",
   "experiment": {
     "task": "sampler"
   },
@@ -13,14 +13,11 @@
     "no_bunching": false
   },
   "training": {
-    "num_runs": 2,
+    "num_runs": 1,
     "epochs": 200,
     "batch_size": 32,
     "learning_rate": 0.02,
-    "betas": [
-      0.7,
-      0.9
-    ],
+    "betas": [0.7, 0.9],
     "weight_decay": 0.0,
     "optimizer": "adam",
     "shuffle_train": true
@@ -43,26 +40,6 @@
         0.33,
         0.25
       ]
-    }
-  },
-  "classification": {
-    "manifest": "models/gaussian_kernels/manifest.json",
-    "data": {
-      "num_samples": 200,
-      "test_size": 0.4,
-      "scaling_factor": 0.65,
-      "cache_dir": "data/cache/classification",
-      "datasets": {
-        "circular": {
-          "noise": 0.05
-        },
-        "moon": {
-          "noise": 0.2
-        },
-        "blob": {
-          "cluster_std": 4.0
-        }
-      }
     }
   }
 }
