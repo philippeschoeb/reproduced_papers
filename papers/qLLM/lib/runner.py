@@ -107,7 +107,7 @@ def train_model(model, train_dataset, eval_dataset, test_dataset, args):
 
     def collate_fn(batch):
         embeddings = torch.stack(
-            [torch.tensor(item["embedding"], dtype=torch.float32) for item in batch]
+            [torch.as_tensor(item["embedding"], dtype=torch.float32) for item in batch]
         )
         labels = torch.tensor([item["label"] for item in batch], dtype=torch.long)
 
