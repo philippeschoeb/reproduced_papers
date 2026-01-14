@@ -83,7 +83,7 @@ def parse_args():
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="./embeddings",
+        default=str(PROJECT_DIR / "embeddings"),
         help="Directory to save embedding JSON files",
     )
 
