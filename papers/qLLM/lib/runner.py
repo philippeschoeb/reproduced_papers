@@ -268,7 +268,7 @@ def pick_model(args, device):
         )
         model_name = args.model
     elif args.model == "torchquantum":
-        from .torchquantum_utils import QLLM
+        from .torchquantum_models import QLLM
 
         encoder_configs = args.encoder_configs or None
         qpu_config = args.pqc_config[0] if args.pqc_config else None

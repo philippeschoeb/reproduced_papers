@@ -36,7 +36,7 @@ qLLM/
 │   └── log-reg.json
 ├── lib/                  # Model implementations
 │   ├── merlin_llm_models.py     # MerLin models
-│   ├── torchquantum_utils.py    # TorchQuantum models
+│   ├── torchquantum_models.py   # TorchQuantum models
 │   ├── classical_models.py      # Classical models
 │   ├── merlin_kernel.py         # Quantum kernel methods
 │   ├── setfit_model.py          # SetFit utilities
@@ -497,10 +497,10 @@ Each split should contain embedding files that can be loaded by the `create_data
 
 Both quantum frameworks include gradient propagation tests:
 - MerLin: `test_module_building_and_gradients()` in `lib/merlin_llm_models.py`
-- TorchQuantum: `test_gradient_propagation()` in `lib/torchquantum_utils.py`
+- TorchQuantum: `test_gradient_propagation()` in `lib/torchquantum_models.py`
 
 Run tests individually:
 ```bash
 python lib/merlin_llm_models.py
-python lib/torchquantum_utils.py
+python lib/torchquantum_models.py
 ```

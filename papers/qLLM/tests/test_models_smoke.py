@@ -67,7 +67,7 @@ def test_merlin_model_smoke(tmp_path):
 
 def test_torchquantum_model_smoke(tmp_path):
     try:
-        import lib.torchquantum_utils  # noqa: F401
+        import lib.torchquantum_models  # noqa: F401
     except ImportError:
         pytest.skip("TorchQuantum dependencies are not installed.")
 
