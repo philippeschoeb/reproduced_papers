@@ -19,7 +19,7 @@ for path in (REPO_ROOT, PROJECT_DIR):
         sys.path.insert(0, str(path))
 
 from papers.shared.qLLM.data_utils import load_data
-from lib.setfit_utils import load_model
+from lib.setfit_model import load_model
 
 
 def save_embeddings_to_json(
