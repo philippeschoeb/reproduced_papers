@@ -18,7 +18,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from lib.models import QConvModel, build_quantum_kernels
+
+try:
+    from lib.models import QConvModel, build_quantum_kernels
+except ModuleNotFoundError:  # Allow running as a package module.
+    from ..lib.models import QConvModel, build_quantum_kernels
 
 PCA_OPTIONS = (16,)
 NB_KERNELS = (2, 3)
