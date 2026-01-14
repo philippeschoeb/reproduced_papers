@@ -18,5 +18,5 @@ def test_import_merlin_module():
 def test_import_models():
     import importlib
 
-    mod = importlib.import_module("models")
+    mod = importlib.import_module("lib.models")
     assert hasattr(mod, "SingleGI")

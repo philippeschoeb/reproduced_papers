@@ -4,7 +4,7 @@ import torch
 
 
 def test_compile_classical_qconv():
-    from models import QConvModel
+    from lib.models import QConvModel
 
     model = QConvModel(input_dim=4, n_kernels=1, kernel_size=2, stride=1, bias=True)
     out = model(torch.zeros(1, 4))
@@ -12,7 +12,7 @@ def test_compile_classical_qconv():
 
 
 def test_compile_quantum_qconv():
-    from models import QConvModel, build_quantum_kernels
+    from lib.models import QConvModel, build_quantum_kernels
 
     kernels = build_quantum_kernels(
         n_kernels=1,
