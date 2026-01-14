@@ -10,7 +10,7 @@ from merlin import (
     CircuitConverter,
     build_slos_distribution_computegraph,
 )
-from .merlin_llm_utils import create_quantum_circuit
+from .merlin_llm_models import create_quantum_circuit
 from sklearn.datasets import load_iris
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.model_selection import train_test_split

@@ -47,7 +47,7 @@ def _build_cfg(tmp_path: Path, model_name: str) -> dict:
 
 def test_merlin_model_smoke(tmp_path):
     try:
-        import lib.merlin_llm_utils  # noqa: F401
+        import lib.merlin_llm_models  # noqa: F401
     except ImportError:
         pytest.skip("MerLin dependencies are not installed.")
 

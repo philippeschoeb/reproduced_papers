@@ -228,7 +228,7 @@ def train_model(model, train_dataset, eval_dataset, test_dataset, args):
 
 def pick_model(args, device):
     if args.model == "merlin-basic":
-        from .merlin_llm_utils import QuantumClassifier
+        from .merlin_llm_models import QuantumClassifier
 
         print(
             f"Embedding dimension: {args.embedding_dim}, hidden_dim : {args.hidden_dim}"
@@ -244,7 +244,7 @@ def pick_model(args, device):
         )
         model_name = args.model
     elif args.model == "merlin-parallel":
-        from .merlin_llm_utils import QuantumClassifierParallel
+        from .merlin_llm_models import QuantumClassifierParallel
 
         model = QuantumClassifierParallel(
             input_dim=args.embedding_dim,
@@ -256,7 +256,7 @@ def pick_model(args, device):
         )
         model_name = args.model
     elif args.model == "merlin-expectation":
-        from .merlin_llm_utils import QuantumClassifierExpectation
+        from .merlin_llm_models import QuantumClassifierExpectation
 
         model = QuantumClassifierExpectation(
             input_dim=args.embedding_dim,
