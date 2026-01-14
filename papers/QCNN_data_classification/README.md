@@ -116,10 +116,10 @@ Results are stored in the upstream `QCNN/Result/` tree.
 
 ## Output Directory and Artifacts
 
-The Merlin CLI writes dataset-specific folders such as `results/results-mnist/` or `results/results-fashionmnist/`. Each run creates a timestamped subdirectory:
+The Merlin CLI writes dataset-specific folders such as `results/timestamp/` and each run creates a timestamped subdirectory:
 
 ```
-results/results-<dataset>/run_YYYYMMDD-HHMMSS/
+results/run_YYYYMMDD-HHMMSS/
 ├── config_snapshot.json   # Fully resolved CLI/config arguments
 ├── run_summary.json       # Aggregated metrics (per seed and variant)
 └── checkpoints / figures  # Optional artefacts produced by the run
