@@ -37,7 +37,7 @@ qLLM/
 ├── lib/                  # Model implementations
 │   ├── merlin_llm_utils.py      # MerLin models
 │   ├── torchquantum_utils.py    # TorchQuantum models
-│   ├── classical_utils.py       # Classical models
+│   ├── classical_models.py      # Classical models
 │   ├── merlin_kernel.py         # Quantum kernel methods
 │   ├── setfit_utils.py          # SetFit utilities
 │   └── runner.py                # Training runner

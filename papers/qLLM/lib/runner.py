@@ -275,7 +275,7 @@ def pick_model(args, device):
         model = QLLM(encoder_configs=encoder_configs, qpu_config=qpu_config)
         model_name = args.model
     elif args.model == "mlps":
-        from .classical_utils import MLPClassifier
+        from .classical_models import MLPClassifier
 
         model = []
         hidden_dims = [0, 48, 96, 144, 192]
