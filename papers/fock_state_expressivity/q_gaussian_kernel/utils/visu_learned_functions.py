@@ -51,7 +51,7 @@ def main() -> None:
             stacklevel=2,
         )
         raise FileNotFoundError(
-            f"Missing learned_functions.json at {payload_path}. the provided previous run has to be a `sampler` task run."
+            f"Missing learned_functions.json at {payload_path}. The provided previous run has to be a `sampler` task run."
         )
 
     payload = _load_json(payload_path)

@@ -67,7 +67,8 @@ classify/
 
 ### Visualizations
 Each visualization script can either reuse a prior run (`--previous-run`) or launch the
-task it depends on if `--previous-run` is omitted:
+task it depends on if `--previous-run` is omitted (except `visu_dataset_examples.py`,
+which generates datasets from `configs/defaults.json` without running training):
 ```bash
 python papers/fock_state_expressivity/q_gaussian_kernel/utils/visu_learned_functions.py \
   --previous-run results/run_YYYYMMDD-HHMMSS
@@ -80,16 +81,21 @@ python papers/fock_state_expressivity/q_gaussian_kernel/utils/visu_accuracy_bars
 ```
 Notes:
 - `visu_learned_functions.py` requires sampler outputs (`sampler/visualization_data/`).
-- `visu_dataset_examples.py` and `visu_accuracy_bars.py` require classify outputs
-  (`classify/visualization_data/` and `classify/*_metrics.json`).
+- `visu_dataset_examples.py` uses `classify/visualization_data/` when `--previous-run`
+  is provided; otherwise it generates datasets from defaults.
+- `visu_accuracy_bars.py` requires classify outputs (`classify/visualization_data/` and
+  `classify/*_metrics.json`).
 If required data is missing, the script warns and exits.
-Figures are saved under `results/run_YYYYMMDD-HHMMSS/<task>/figures/`:
+Figures are saved under `results/run_YYYYMMDD-HHMMSS/<task>/figures/` (or
+`results/figures/` for `visu_dataset_examples.py` without `--previous-run`):
 ```
 sampler/figures/
   learned_vs_target.png
 classify/figures/
   datasets/classification_datasets.png
   svm_accuracy.png
+figures/
+  classification_datasets.png
 ```
 
 ## Configuration

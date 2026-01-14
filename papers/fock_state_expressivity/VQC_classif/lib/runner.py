@@ -66,12 +66,25 @@ def build_args(config: dict[str, Any]) -> ExperimentArgs:
 def _serialize_training_metrics(results: dict[str, dict]) -> dict[str, Any]:
     return {
         dataset: {
-            "runs": data["runs"],
+            "runs": _serialize_runs_data(data["runs"]),
             "final_test_accs": [float(run["final_test_acc"]) for run in data["runs"]],
             "avg_final_test_acc": float(data["avg_final_test_acc"]),
         }
         for dataset, data in results.items()
     }
+
+
+def _serialize_runs_data(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    serialized_runs: list[dict[str, Any]] = []
+    for run in runs:
+        serialized_run: dict[str, Any] = {}
+        for key, value in run.items():
+            if isinstance(value, np.floating):
+                serialized_run[key] = float(value)
+            else:
+                serialized_run[key] = value
+        serialized_runs.append(serialized_run)
+    return serialized_runs
 
 
 def _serialize_decision_boundaries(
