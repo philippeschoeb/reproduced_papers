@@ -13,8 +13,10 @@ from pathlib import Path
 import numpy as np
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-if str(PROJECT_DIR) not in sys.path:
-    sys.path.insert(0, str(PROJECT_DIR))
+REPO_ROOT = PROJECT_DIR.parents[1]
+for path in (REPO_ROOT, PROJECT_DIR):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 from papers.shared.qLLM.data_utils import load_data
 from lib.setfit_utils import load_model
