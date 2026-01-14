@@ -33,7 +33,7 @@
 {
   "seed": 42,                          // Random seed for reproducibility
   "device": "auto",                    // "cuda", "cpu", or "auto"
-  "outdir": "outdir",                  // Output directory
+  "outdir": "results",                 // Output directory
   "dataset": {
     "name": "sst2",                    // Dataset name
     "eval_size": 250,                  // Validation set size

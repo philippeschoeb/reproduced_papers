@@ -42,7 +42,7 @@ qLLM/
 │   ├── setfit_utils.py          # SetFit utilities
 │   └── runner.py                # Training runner
 ├── embeddings/          # Pre-computed embeddings (train/eval/test splits)
-├── outdir/              # Training outputs and results
+├── results/             # Training outputs and results
 ├── tests/               # Unit tests
 ├── utils/               # Utility scripts
 ├── implementation.py    # CLI entry point
@@ -222,10 +222,10 @@ The CLI schema is defined in `configs/cli.json`. Default values are in `configs/
 
 ## Output Directory and Config Snapshot
 
-Each run writes into a timestamped folder under the base `outdir` (default: `outdir`):
+Each run writes into a timestamped folder under the base `outdir` (default: `results`):
 
 ```
-outdir/
+results/
 └── run_YYYYMMDD-HHMMSS/
     ├── config_snapshot.json  # Resolved config after merges/CLI overrides
     ├── metrics.json          # Model metrics for the run

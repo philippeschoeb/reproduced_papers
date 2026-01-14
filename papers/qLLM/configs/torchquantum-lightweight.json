@@ -2,7 +2,7 @@
   "description": "TorchQuantum configuration - lightweight model with single encoder.",
   "seed": 42,
   "device": "auto",
-  "outdir": "outdir",
+  "outdir": "results",
   "logging": {
     "level": "info"
   },

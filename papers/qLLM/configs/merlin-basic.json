@@ -2,7 +2,7 @@
   "description": "MerLin Basic model configuration - simple sandwich architecture with trainable interferometers.",
   "seed": 42,
   "device": "auto",
-  "outdir": "outdir",
+  "outdir": "results",
   "logging": {
     "level": "info"
   },

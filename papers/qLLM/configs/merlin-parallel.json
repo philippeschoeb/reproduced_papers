@@ -2,7 +2,7 @@
   "description": "MerLin Parallel model configuration - multiple independent encoders with concatenated outputs.",
   "seed": 42,
   "device": "auto",
-  "outdir": "outdir",
+  "outdir": "results",
   "logging": {
     "level": "info"
   },
