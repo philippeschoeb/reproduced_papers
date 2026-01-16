@@ -1,0 +1,14 @@
+{
+    "--exp_to_run": "DEFAULT",
+    "--bond_dim": 7,
+    "--bond_dimensions_to_test": [1,2,3,4,5,6,7,8,9,10],
+    "--num_training_rounds": 2,
+    "--num_epochs": 5,
+    "--num_qnn_train_step": 12,
+    "--classical_epochs": 5,
+    "--qu_train_with_cobyla": "False",
+    "--pruning": "False",
+    "--pruning_amount": 0.5,
+    "--weight_sharing": "False",
+    "--shared_rows": 10
+}

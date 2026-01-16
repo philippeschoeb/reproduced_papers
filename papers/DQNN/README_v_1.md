@@ -1,14 +1,10 @@
-# Distributed Quantum Neural Networks on Distributed Photonic Quantum Computing (DQNN)
+# Distributed Quantum Neural Networks on Distributed Photonic Quantum Computing
 
-## Reference and Attribution
+The paper reproduced here was one of the projects of the Perceval Challenge: “Distributed Quantum Neural Networks on Distributed Photonic Quantum Computing” by Chen et al., 2025 https://arxiv.org/html/2505.08474v1.
 
-- Paper: Distributed Quantum Neural Networks on
-Distributed Photonic Quantum Computing (2025)
-- Authors: Chen *et al.*
-- DOI/ArXiv: [2505.08474v1](https://arxiv.org/html/2505.08474v1)
-- [Original repository](https://github.com/Louisanity/PhotonicQuantumTrain)
+The original code using the Perceval library can be found [here](https://github.com/Louisanity/PhotonicQuantumTrain). 
 
-## Overview
+Current Merlin repo: **TODO**
 
 ### 🎯 Main goal 
 >Classify the reduced MNIST dataset still containing the full 10 digits
@@ -83,98 +79,3 @@ Source: K.-C. Chen, C.-Y. Liu, Y. Shang, F. Burt, and K. K. Leung, “Distribute
 ### Our results
 
 **To come…**
-
-## How to Run
-
-### Install dependencies
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### Command-line interface
-
-Main entry point: the repo-level `implementation.py`. The CLI is entirely described in `configs/cli.json`, so updating/adding arguments does not require editing Python code.
-
-```bash
-# From inside papers/reproduction_template
-python ../../implementation.py --help
-
-# From the repo root
-python implementation.py --paper reproduction_template --help
-```
-
-Example overrides (see `configs/cli.json` for the authoritative list):
-
-- `--config PATH` Load an additional JSON config (merged over `defaults.json`).
-
-Example runs:
-
-```bash
-# From a JSON config (inside the project)
-python ../../implementation.py --config configs/example.json
-
-# Override some parameters inline
-python ../../implementation.py --config configs/example.json --epochs 50 --lr 1e-3
-
-# Equivalent from the repo root
-python implementation.py --paper reproduction_template --config configs/example.json --epochs 50 --lr 1e-3
-```
-
-The script saves a snapshot of the resolved config alongside results and logs.
-
-
-## Project structure
-- `lib/runner.py` — The file to run for every experiment
-- `lib/` — core library modules used by scripts
-  - `TorchMPS/` — Repository to instanciate a MPS tensor module in Torch
-  - `ablation_exp.py`, `bond_dimension_exp.py`, `default_exp.py`- Files containing the function to run the corresponding experiment
-  - `boson_sampler.py` - The file containg the class managing the quantum layers
-  - `classical_utils.py`, `photonic_qt_utils.py`, `utils.py`- Files containing utility functions.
-  - `model.py` — The torch module implementing the quantum train algorithm
-- `configs/` — default configs + CLI schema consumed by the shared runner
-  - `defaults.json`, `cli.json`
-- Other
-  - `requirements.txt` — Python dependencies
-  - `tests/` - Unitary tests to make sure the library works correctly
-  - `utils/` — placeholder following the template
-
-## Results and Analysis
-
-- The results are stored in the results folder. 
-- To reproduce the experiments, simply call these lines:
- 
- For just a basic training and evaluation:
- >``python3 lib/runner.py --exp_to_run DEFAULT``
-
- For a analysis of the relation between accuracy and the bond dimension of the MPS:
- >``python3 lib/runner.py --exp_to_run BOND``
-
-  For an ablation study:
- >``python3 lib/runner.py --exp_to_run ABLATION``
-
-
-## Extensions and Next Steps
-
-Generalize the model to train any neral network model. To start, maybe adaot the code for a CNN pf various sizes.
-
-## Reproducibility Notes
-
-- TO CHECK
-
-## Testing
-
-Run tests from inside the `papers/reproduction_template/` directory:
-
-```bash
-cd papers/reproduction_template
-pytest -q
-```
-Notes:
-- Tests are scoped to this template folder and expect the current working directory to be `reproduction_template/`.
-- If `pytest` is not installed: `pip install pytest`.
-
-## Acknowledgments
-We here used the code of the [TorchMPS repository](https://github.com/jemisjoky/TorchMPS).
