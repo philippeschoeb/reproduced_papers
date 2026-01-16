@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 import merlin as ML
-from QTrain.boson_sampler import BosonSampler
+from lib.boson_sampler import BosonSampler
 
 
 @pytest.fixture
