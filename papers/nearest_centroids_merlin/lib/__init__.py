@@ -1,15 +1,11 @@
-"""Nearest centroid QML reproduced paper library package.
-
-This exposes the components used by the shared runner and notebooks.
-"""
+"""Nearest centroid QML reproduced paper library package."""
 
 from .classifier import MLQuantumNearestCentroid, QuantumNearestCentroid
-
-__all__ = ["QuantumNearestCentroid", "MLQuantumNearestCentroid"]
-
 from .synthetic_data import generate_paper_datasets, generate_synthetic_data
+from .defaults import default_config
 
 __all__ = [
+    "default_config",
     "QuantumNearestCentroid",
     "MLQuantumNearestCentroid",
     "generate_synthetic_data",

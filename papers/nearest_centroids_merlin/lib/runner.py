@@ -1,9 +1,9 @@
+"""Runtime entrypoints for the Nearest Centroid Classification reproduction."""
+
 from __future__ import annotations
 
-import datetime as dt
 import json
 import logging
-import random
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -26,6 +26,8 @@ from .visualization import (
     plot_confusion_matrices_comparison,
 )
 
+from runtime_lib.data_paths import paper_data_dir
+
 logger = logging.getLogger(__name__)
 
 
@@ -43,47 +45,6 @@ DATASETS: dict[str, dict[str, Any]] = {
         "n_classes": 4,
     },
 }
-
-
-def set_seed(seed: int) -> None:
-    """Set Python / NumPy / Torch seeds for reproducibility."""
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-
-
-def configure_logging(level: str = "info", log_file: Path | None = None) -> None:
-    """Configure root logger with console and optional file handler."""
-    level_map = {
-        "debug": logging.DEBUG,
-        "info": logging.INFO,
-        "warning": logging.WARNING,
-        "error": logging.ERROR,
-        "critical": logging.CRITICAL,
-    }
-    log_level = level_map.get(str(level).lower(), logging.INFO)
-
-    root = logging.getLogger()
-    root.setLevel(log_level)
-
-    for h in list(root.handlers):
-        root.removeHandler(h)
-
-    fmt = logging.Formatter(
-        "%(asctime)s | %(levelname)s | %(name)s | %(message)s", "%Y-%m-%d %H:%M:%S"
-    )
-    sh = logging.StreamHandler()
-    sh.setFormatter(fmt)
-    root.addHandler(sh)
-
-    if log_file is not None:
-        fh = logging.FileHandler(log_file)
-        fh.setFormatter(fmt)
-        root.addHandler(fh)
 
 
 def compute_classical_distances(
@@ -269,10 +230,13 @@ def run_subset_experiment(
 
 
 def _load_dataset(
-    dataset_name: str, data_root: Path, cfg: dict[str, Any] = None
+    dataset_name: str, data_root: str | Path | None, cfg: dict[str, Any] | None = None
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Load dataset by name."""
+    """Load dataset by name, using runtime_lib for path resolution."""
     name = dataset_name.lower()
+
+    # Use shared runtime data path resolution
+    resolved_root = paper_data_dir("nearest_centroids_merlin", data_root)
 
     if name == "mnist":
         transform = transforms.Compose(
@@ -282,7 +246,7 @@ def _load_dataset(
             ]
         )
         mnist = torchvision.datasets.MNIST(
-            root=str(data_root), train=True, download=True, transform=transform
+            root=str(resolved_root), train=True, download=True, transform=transform
         )
         X = mnist.data.numpy().reshape(len(mnist), -1)
         y = mnist.targets.numpy()
@@ -308,8 +272,8 @@ def _load_dataset(
     raise ValueError(f"Unsupported dataset: {dataset_name}")
 
 
-def train_and_evaluate(cfg: dict[str, Any], run_dir: Path) -> None:
-    """Main training and evaluation loop."""
+def _run_experiments(cfg: dict[str, Any], run_dir: Path) -> None:
+    """Core experiment loop - run all configured experiments."""
     logger.info("Starting experiment with dataset: %s", cfg["dataset"]["name"])
 
     dataset_name = cfg["dataset"]["name"].lower()
@@ -323,9 +287,7 @@ def train_and_evaluate(cfg: dict[str, Any], run_dir: Path) -> None:
     if not experiments:
         raise ValueError("No experiments specified in config")
 
-    data_root = Path(cfg.get("dataset", {}).get("root", "data"))
-    data_root.mkdir(parents=True, exist_ok=True)
-
+    data_root = cfg.get("dataset", {}).get("root", None)
     X, y = _load_dataset(dataset_name, data_root, cfg)
 
     logger.info(f"Loaded {len(X)} samples with {X.shape[1]} features")
@@ -367,10 +329,10 @@ def train_and_evaluate(cfg: dict[str, Any], run_dir: Path) -> None:
     results_path.write_text(json.dumps(all_results, indent=2))
     logger.info("All experiments completed. Results saved to %s", results_path)
 
-    generate_visualizations(all_results, dataset_name, n_components, run_dir)
+    _generate_visualizations(all_results, dataset_name, n_components, run_dir)
 
 
-def generate_visualizations(
+def _generate_visualizations(
     all_results: list[dict[str, Any]],
     dataset_name: str,
     n_components: int,
@@ -442,35 +404,29 @@ def generate_visualizations(
     logger.info("Figures saved to: %s", figures_dir)
 
 
-def main(config: dict[str, Any], run_dir: Path | str | None = None) -> str:
-    """Entry point expected by the MerLin shared runner."""
-    cfg: dict[str, Any] = dict(config)
+def train_and_evaluate(cfg: dict[str, Any], run_dir: Path) -> None:
+    """
+    Entry point required by the MerLin shared runtime.
 
-    seed = int(cfg.get("seed", 42))
-    set_seed(seed)
+    The shared runtime handles:
+    - Seed setting
+    - Run directory creation
+    - Logging configuration
+    - Config snapshot saving
 
-    # Use provided run_dir or create one
-    if run_dir is not None:
-        run_dir = Path(run_dir)
-    else:
-        base_out = Path(cfg.get("outdir", "results")).resolve()
-        base_out.mkdir(parents=True, exist_ok=True)
-        timestamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-        run_dir = base_out / f"run_{timestamp}"
+    This function should focus only on the experiment logic.
 
-    run_dir.mkdir(parents=True, exist_ok=True)
-
-    logging_cfg = cfg.get("logging", {})
-    level = logging_cfg.get("level", "info")
-    configure_logging(level, run_dir / "run.log")
-
-    (run_dir / "config_snapshot.json").write_text(json.dumps(cfg, indent=2))
-
-    logger.info("Starting run in %s", run_dir)
-    logger.info("Using seed=%d", seed)
-
-    train_and_evaluate(cfg, run_dir)
-
-    (run_dir / "done.txt").write_text(f"Completed at {dt.datetime.now().isoformat()}")
+    Parameters
+    ----------
+    cfg : dict
+        Configuration dictionary (already loaded and merged with defaults)
+    run_dir : Path
+        Directory for saving results (already created by shared runtime)
+    """
+    run_dir = Path(run_dir)
+    _run_experiments(cfg, run_dir)
+    (run_dir / "done.txt").write_text("Completed")
     logger.info("Finished. Artifacts in: %s", run_dir)
-    return str(run_dir)
+
+
+__all__ = ["train_and_evaluate", "run_subset_experiment", "DATASETS"]
