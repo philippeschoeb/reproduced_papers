@@ -1,25 +1,26 @@
 {
+  "description": "Train/eval sweep on tetromino for Figure 5 metrics.",
   "seed": 42,
   "outdir": "results",
   "device": "cpu",
   "dataset": {
     "name": "tetromino",
-    "batch_size": 400,
-    "train_size": 400,
-    "test_size": 100
+    "batch_size": 100,
+    "train_size": 100,
+    "test_size": 48
   },
   "experiment": {
-    "type": "figure_5",
+    "type": "train_eval",
     "dataset": "tetromino",
     "alpha": 0.31415926535897934,
     "tau": 1.0,
-    "max_layers": 3,
-    "repetitions": 1
+    "max_layers": 15,
+    "repetitions": 5
   },
   "training": {
-    "epochs": 100,
+    "epochs": 10000,
     "lr": 0.001,
-    "patience": 50
+    "patience": 1000
   },
   "logging": {
     "level": "info",

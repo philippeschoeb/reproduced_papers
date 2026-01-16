@@ -46,7 +46,7 @@
     },
     {
       "flags": ["--layers"],
-      "help": "Max number of layers for Figure 5",
+      "help": "Max number of layers for train/eval sweep",
       "type": "int",
       "default": null,
       "apply": {"kind": "config_path", "path": "experiment.max_layers"}
