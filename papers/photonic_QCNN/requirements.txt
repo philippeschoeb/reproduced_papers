@@ -2,13 +2,9 @@ aiohttp
 h5py
 matplotlib
 merlinquantum
-numpy
 pennylane
 pytest
 qoptcraft
 scikit-learn
-scipy
 seaborn
-sympy
-torch
 tqdm
