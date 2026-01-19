@@ -28,6 +28,7 @@ from papers.DQNN.lib.classical_utils import (
     create_datasets,
     train_classical_cnn,
 )
+from papers.DQNN.utils.utils import plot_training_metrics
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -107,7 +108,7 @@ def run_default_exp(
     batch_size_qnn = 1000
     train_loader_qnn = DataLoader(train_dataset, batch_size_qnn, shuffle=True)
 
-    qt_model = train_quantum_model(
+    qt_model, qnn_parameters, loss_list_epoch, acc_list_epoch = train_quantum_model(
         qt_model,
         train_loader,
         train_loader_qnn,
@@ -119,7 +120,7 @@ def run_default_exp(
         num_epochs,
         qu_train_with_cobyla=qu_train_with_cobyla,
         num_qnn_train_step=num_qnn_train_step,
-    )[0]
+    )
 
     evaluate_model(
         qt_model,
@@ -129,5 +130,7 @@ def run_default_exp(
         bs_2,
         n_qubit,
         nw_list_normal,
-        generate_graph=generate_graph,
     )
+
+    if generate_graph:
+        plot_training_metrics(loss_list_epoch, acc_list_epoch)

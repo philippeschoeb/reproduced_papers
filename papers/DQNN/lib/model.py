@@ -20,7 +20,6 @@ from papers.DQNN.lib.photonic_qt_utils import (
     probs_to_weights,
 )
 from papers.DQNN.lib.boson_sampler import BosonSampler
-from papers.DQNN.utils.utils import plot_training_metrics
 from typing import List, Tuple
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "TorchMPS"))
@@ -57,21 +56,18 @@ class PhotonicQuantumTrain(nn.Module):
             input_dim=n_qubit + 1, output_dim=1, bond_dim=bond_dim
         )
 
-    def forward(
+    def extract_parameters(
         self,
-        x: torch.Tensor,
         bs_1: BosonSampler,
         bs_2: BosonSampler,
         n_qubit: int,
         nw_list_normal: List[float],
-    ) -> torch.Tensor:
+    ):
         """
-        Run the forward pass by mapping quantum probabilities to CNN weights.
+        Convert quantum-layer probabilities into a CNN-compatible state dict.
 
         Parameters
         ----------
-        x : torch.Tensor
-            Input images tensor.
         bs_1 : BosonSampler
             First boson sampler providing a quantum layer.
         bs_2 : BosonSampler
@@ -83,8 +79,8 @@ class PhotonicQuantumTrain(nn.Module):
 
         Returns
         -------
-        torch.Tensor
-            Model logits for classification.
+        dict
+            State dict reshaped to match the CNN template.
         """
         from papers.DQNN.lib.classical_utils import CNNModel
 
@@ -118,8 +114,38 @@ class PhotonicQuantumTrain(nn.Module):
 
         # Always use standard CNN architecture for quantum training regardless of classical training method
         model_template = CNNModel(use_weight_sharing=False, shared_rows=10)
-        state_dict = probs_to_weights(prob_val_post_processed, model_template)
+        return probs_to_weights(prob_val_post_processed, model_template)
 
+    def forward(
+        self,
+        x: torch.Tensor,
+        bs_1: BosonSampler,
+        bs_2: BosonSampler,
+        n_qubit: int,
+        nw_list_normal: List[float],
+    ) -> torch.Tensor:
+        """
+        Run the forward pass by mapping quantum probabilities to CNN weights.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input images tensor.
+        bs_1 : BosonSampler
+            First boson sampler providing a quantum layer.
+        bs_2 : BosonSampler
+            Second boson sampler providing a quantum layer.
+        n_qubit : int
+            Number of qubits used to generate the quantum states.
+        nw_list_normal : List[float]
+            Indices of network weights to keep from the generated probabilities.
+
+        Returns
+        -------
+        torch.Tensor
+            Model logits for classification.
+        """
+        state_dict = self.extract_parameters(bs_1, bs_2, n_qubit, nw_list_normal)
         dtype = torch.float32
 
         # CNN to classify MNIST
@@ -404,7 +430,6 @@ def evaluate_model(
     n_qubit: int,
     nw_list_normal: List[float],
     qnn_parameters: List[float] = None,
-    generate_graph: bool = False,
 ) -> Tuple[float, float, float]:
     """
     Evaluate the model on train and validation sets.
@@ -428,9 +453,6 @@ def evaluate_model(
     qnn_parameters : List[float] | None, optional
         Parameters to temporarily set for evaluation. If None, uses current
         boson-sampler parameters.
-    generate_graph : bool, optional
-        Whether to plot a summary of train/test metrics after evaluation.
-        Default is False.
 
     Returns
     -------
@@ -495,9 +517,6 @@ def evaluate_model(
     if qnn_parameters is not None:
         bs_1.set_params(original_params[: bs_1.num_effective_params])
         bs_2.set_params(original_params[bs_1.num_effective_params :])
-
-    if generate_graph:
-        plot_training_metrics(acc_train, acc_test, loss_train, loss_test)
 
     return (
         acc_test,

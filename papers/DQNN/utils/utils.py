@@ -234,55 +234,49 @@ def parse_args():
 
 
 def plot_training_metrics(
-    train_acc: List[float],
-    val_acc: List[float],
-    train_loss: List[float],
-    val_loss: List[float],
+    loss_list_epoch: List[float],
+    acc_list_epoch: List[float],
 ):
     """
-    Plot training/validation accuracy and loss curves. The plot is
+    Plot training accuracy and loss curves side by side. The plot is
     saved as a PDF file: /results/training_metrics_graph.pdf
 
     Parameters
     ----------
-    train_acc : list[float]
-        Training accuracy per epoch.
-    val_acc : list[float]
-        Validation accuracy per epoch.
-    train_loss : list[float]
+    loss_list_epoch : list[float]
         Training loss per epoch.
-    val_loss : list[float]
-        Validation loss per epoch.
+    acc_list_epoch : list[float]
+        Training accuracy per epoch.
 
     Returns
     -------
     None
     """
-    fig, axes = plt.subplots(1, 2, figsize=(15, 5))
-    X = [i for i in range(len(train_acc))]
-    names = [str(i + 1) for i in range(len(train_acc))]
-    axes[0].plot(X, train_acc, label="training")
-    axes[0].plot(X, val_acc, label="validation")
-    axes[0].set_xlabel("Epochs")
-    axes[0].set_ylabel("ACC")
-    axes[0].set_title("Training and validation accuracies")
-    axes[0].grid(visible=True)
-    axes[0].legend()
-    axes[1].plot(X, train_loss, label="training")
-    axes[1].plot(X, val_loss, label="validation")
-    axes[1].set_xlabel("Epochs")
-    axes[1].set_ylabel("Loss")
-    axes[1].set_title("Training and validation losses")
-    axes[1].grid(visible=True)
-    axes[1].legend()
-    axes[0].set_xticks(ticks=X, labels=names)
-    axes[1].set_xticks(ticks=X, labels=names)
-    plt.savefig(
-        str(pathlib.Path(__file__).parent.parent.resolve())
-        + "/results/training_metrics_graph.pdf",
-        format="pdf",
-        bbox_inches="tight",
+    loss_values = [
+        loss_i if isinstance(loss_i, (int, float)) else loss_i.cpu().detach()
+        for loss_i in loss_list_epoch
+    ]
+
+    fig, (ax_loss, ax_acc) = plt.subplots(1, 2, figsize=(10, 3.6), sharex=True)
+    fig.suptitle("Training Metrics", fontsize=12, fontweight="bold")
+
+    ax_loss.plot(loss_values, lw=2)
+    ax_loss.set_title("Loss")
+    ax_loss.set_xlabel("Epoch")
+    ax_loss.set_ylabel("Loss")
+
+    ax_acc.plot(acc_list_epoch, lw=2, color="tab:green")
+    ax_acc.set_title("Accuracy")
+    ax_acc.set_xlabel("Epoch")
+    ax_acc.set_ylabel("Accuracy (%)")
+
+    plt.tight_layout()
+    output_path = (
+        pathlib.Path(__file__).parent.parent.resolve()
+        / "results"
+        / "training_metrics_graph.pdf"
     )
+    plt.savefig(output_path, format="pdf", bbox_inches="tight")
 
 
 def plot_bond_exp(
