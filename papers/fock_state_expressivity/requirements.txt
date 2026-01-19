@@ -1,7 +1,4 @@
-numpy
-scikit-learn
 matplotlib
 merlinquantum
 pytest
-torch
 tqdm
