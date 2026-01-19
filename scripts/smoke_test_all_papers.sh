@@ -40,14 +40,14 @@ done < <($PYTHON_BIN implementation.py --list-papers)
 
 # Optional substring filter to target specific papers quickly (first arg)
 FILTER=${1:-}
+filtered=()
 if [[ -n "$FILTER" ]]; then
-  filtered=()
   for p in "${PAPERS[@]}"; do
     if [[ "$p" == *"$FILTER"* ]]; then
       filtered+=("$p")
     fi
   done
-  PAPERS=("${filtered[@]}")
+  PAPERS=("${filtered[@]-}")
 fi
 
 printf "Found %d papers\n" "${#PAPERS[@]}"
@@ -67,10 +67,26 @@ for paper in "${PAPERS[@]}"; do
   env_dir="$ENV_ROOT/$paper_sanitized"
   log_file="$LOG_DIR/$paper_sanitized.log"
 
+  paper_python="$PYTHON_BIN"
+  if [[ "$paper_rel" == "qLLM" ]]; then
+    if command -v python3.12 >/dev/null 2>&1; then
+      paper_python="python3.12"
+    else
+      echo "[WARN] python3.12 not found; qLLM installs may fail under $PYTHON_BIN." >&2
+    fi
+  fi
+
   echo "==> [$paper] setting up venv at $env_dir"
+  if [[ "$paper_rel" == "qLLM" ]] && [[ -x "$env_dir/bin/python" ]]; then
+    py_version="$("$env_dir/bin/python" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')"
+    if [[ "$py_version" != "3.12" ]]; then
+        echo "[INFO] Recreating qLLM venv with python3.12 (found $py_version)." >&2
+        rm -rf "$env_dir"
+      fi
+    fi
   if [[ ! -d "$env_dir" ]] || [[ ! -f "$env_dir/bin/activate" ]]; then
     rm -rf "$env_dir"
-    $PYTHON_BIN -m venv "$env_dir"
+    $paper_python -m venv "$env_dir"
   fi
 
   # shellcheck disable=SC1090

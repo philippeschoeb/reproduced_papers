@@ -10,7 +10,7 @@ from merlin import (
     CircuitConverter,
     build_slos_distribution_computegraph,
 )
-from merlin_llm_utils import create_quantum_circuit
+from .merlin_llm_models import create_quantum_circuit
 from sklearn.datasets import load_iris
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.model_selection import train_test_split
@@ -347,6 +347,10 @@ class FidelityKernel(torch.nn.Module):
             )
 
         transition_probs = all_probs[:, self._input_state_index]
+        
+        # Convert to real values if complex (quantum probabilities are inherently real)
+        if transition_probs.is_complex():
+            transition_probs = torch.abs(transition_probs) ** 2
 
         if x2 is None:
             # Copy transition probs to upper & lower diagonal
@@ -392,7 +396,13 @@ class FidelityKernel(torch.nn.Module):
             probs = self._autodiff_process.sampling_noise.pcvl_sampler(
                 probs, self.shots, self.sampling_method
             )
-        return probs[self._input_state_index].item()
+        
+        # Convert to real if complex (quantum probabilities are real)
+        prob_value = probs[self._input_state_index]
+        if prob_value.is_complex():
+            prob_value = torch.abs(prob_value) ** 2
+        
+        return prob_value.item()
 
     @staticmethod
     def _project_psd(matrix: Tensor) -> Tensor:
