@@ -1,25 +1,17 @@
 import numpy as np
 import pytest
 import merlin as ML
-from lib.boson_sampler import BosonSampler
+from papers.DQNN.lib.boson_sampler import BosonSampler
 
 
 @pytest.fixture
-def setup_session():
-    session = None
-    if session is not None:
-        session.start()
-    return session
+def bs_1():
+    return BosonSampler(m=9, n=4)
 
 
 @pytest.fixture
-def bs_1(setup_session):
-    return BosonSampler(m=9, n=4, session=setup_session)
-
-
-@pytest.fixture
-def bs_2(setup_session):
-    return BosonSampler(m=8, n=4, session=setup_session)
+def bs_2():
+    return BosonSampler(m=8, n=4)
 
 
 def test_init(bs_1, bs_2):

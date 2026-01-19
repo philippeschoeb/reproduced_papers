@@ -1,22 +1,70 @@
+"""
+Classical CNN utilities for DQNN experiments.
+
+This module provides models, pruning helpers, and dataset/training utilities
+used alongside the photonic quantum train.
+"""
+
 import torch
 import torch.nn as nn
+import pandas as pd
 import torch.optim as optim
 import torch.nn.utils.prune as prune
 from torch.utils.data import DataLoader
-from lib.utils import MNIST_partial
+from typing import List, Tuple
+from papers.DQNN.utils.utils import MNIST_partial
+
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 
 class SharedWeightFC(nn.Module):
-    def __init__(self, in_features, out_features, shared_rows):
+    """
+    Fully connected layer with repeated shared weights.
+
+    Parameters
+    ----------
+    in_features : int
+        Number of input features.
+    out_features : int
+        Number of output features.
+    shared_rows : int
+        Number of shared rows to repeat to form the weight matrix.
+    """
+
+    def __init__(self, in_features: int, out_features: int, shared_rows: int):
+        """
+        Initialize the shared-weight fully connected layer.
+
+        Parameters
+        ----------
+        in_features : int
+            Number of input features.
+        out_features : int
+            Number of output features.
+        shared_rows : int
+            Number of shared rows to repeat to form the weight matrix.
+        """
         super(SharedWeightFC, self).__init__()
         self.shared_weights = nn.Parameter(torch.randn(shared_rows, in_features))
         self.bias = nn.Parameter(torch.randn(out_features))
         self.out_features = out_features
         self.shared_rows = shared_rows
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Apply the shared-weight projection.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (batch, in_features).
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor of shape (batch, out_features).
+        """
         weight_matrix = self.shared_weights.repeat(
             self.out_features // self.shared_rows, 1
         )
@@ -24,7 +72,28 @@ class SharedWeightFC(nn.Module):
 
 
 class CNNModel(nn.Module):
-    def __init__(self, use_weight_sharing=False, shared_rows=10):
+    """
+    Simple CNN for MNIST with optional weight sharing.
+
+    Parameters
+    ----------
+    use_weight_sharing : bool, optional
+        Whether to use shared weights in the first FC layer. Default is False.
+    shared_rows : int, optional
+        Number of shared rows when using weight sharing. Default is 10.
+    """
+
+    def __init__(self, use_weight_sharing: bool = False, shared_rows: int = 10):
+        """
+        Initialize the CNN model.
+
+        Parameters
+        ----------
+        use_weight_sharing : bool, optional
+            Whether to use shared weights in the first FC layer. Default is False.
+        shared_rows : int, optional
+            Number of shared rows when using weight sharing. Default is 10.
+        """
         super(CNNModel, self).__init__()
         self.conv1 = nn.Conv2d(1, 8, kernel_size=5)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
@@ -39,7 +108,20 @@ class CNNModel(nn.Module):
             self.fc1 = nn.Linear(12 * 4 * 4, 20)
             self.fc2 = nn.Linear(20, 10)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Run the forward pass.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input images of shape (batch, 1, 28, 28).
+
+        Returns
+        -------
+        torch.Tensor
+            Model logits of shape (batch, 10).
+        """
         x = self.pool(self.conv1(x))
         x = self.pool(self.conv2(x))
         x = x.view(x.size(0), -1)
@@ -48,8 +130,21 @@ class CNNModel(nn.Module):
         return x
 
 
-def apply_pruning(model, amount=0.3):
-    """Apply structured pruning to convolutional and fully connected layers."""
+def apply_pruning(model: nn.Module, amount: float = 0.3):
+    """
+    Apply structured pruning to convolutional and fully connected layers.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Model to prune in-place.
+    amount : float, optional
+        Fraction of filters/neurons to prune. Default is 0.3.
+
+    Returns
+    -------
+    None
+    """
     for name, layer in model.named_modules():
         if isinstance(layer, nn.Conv2d):
             prune.ln_structured(layer, name="weight", amount=amount, n=2, dim=0)
@@ -63,8 +158,19 @@ def apply_pruning(model, amount=0.3):
             )
 
 
-def remove_pruning(model):
-    """Remove pruning masks to finalize the reduced model."""
+def remove_pruning(model: nn.Module):
+    """
+    Remove pruning masks to finalize the reduced model.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Model with pruning re-parameterizations.
+
+    Returns
+    -------
+    None
+    """
     for name, layer in model.named_modules():
         if isinstance(layer, (nn.Conv2d, nn.Linear)):
             try:
@@ -74,10 +180,43 @@ def remove_pruning(model):
 
 
 class MaskedAdam(torch.optim.Adam):
-    def __init__(self, params, **kwargs):
+    """
+    Adam optimizer that zeros gradients for masked parameters.
+
+    Parameters
+    ----------
+    params : iterable
+        Parameters to optimize.
+    **kwargs
+        Additional Adam optimizer keyword arguments.
+    """
+
+    def __init__(self, params: List[float], **kwargs):
+        """
+        Initialize the masked Adam optimizer.
+
+        Parameters
+        ----------
+        params : List[float]
+            Parameters to optimize.
+        **kwargs
+            Additional Adam optimizer keyword arguments.
+        """
         super().__init__(params, **kwargs)
 
-    def step(self, closure=None):
+    def step(self, closure: callable = None):
+        """
+        Perform a single optimization step with masking.
+
+        Parameters
+        ----------
+        closure : callable, optional
+            Optional closure that reevaluates the model and returns the loss.
+
+        Returns
+        -------
+        None
+        """
         for group in self.param_groups:
             for param in group["params"]:
                 if param.grad is None:
@@ -87,7 +226,16 @@ class MaskedAdam(torch.optim.Adam):
         super().step(closure)
 
 
-def create_datasets():
+def create_datasets() -> Tuple[pd.DataFrame, pd.DataFrame, DataLoader, DataLoader, int]:
+    """
+    Create MNIST train/validation datasets and data loaders.
+
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame, DataLoader, DataLoader, int]
+        Train dataset, validation dataset, train loader, validation loader,
+        and batch size.
+    """
     train_dataset = MNIST_partial(split="train")
     val_dataset = MNIST_partial(split="val")
     batch_size = 128
@@ -97,14 +245,39 @@ def create_datasets():
 
 
 def train_classical_cnn(
-    train_loader,
-    val_loader,
-    num_epochs,
-    use_pruning=False,
-    pruning_amount=0.5,
-    use_weight_sharing=False,
-    shared_rows=10,
-):
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    num_epochs: int,
+    use_pruning: bool = False,
+    pruning_amount: float = 0.5,
+    use_weight_sharing: bool = False,
+    shared_rows: int = 10,
+) -> CNNModel:
+    """
+    Train a classical CNN baseline and evaluate on validation data.
+
+    Parameters
+    ----------
+    train_loader : torch.utils.data.DataLoader
+        Training data loader.
+    val_loader : torch.utils.data.DataLoader
+        Validation data loader.
+    num_epochs : int
+        Number of training epochs.
+    use_pruning : bool, optional
+        Whether to apply structured pruning. Default is False.
+    pruning_amount : float, optional
+        Fraction of weights to prune if pruning is enabled. Default is 0.5.
+    use_weight_sharing : bool, optional
+        Whether to use shared weights in the first FC layer. Default is False.
+    shared_rows : int, optional
+        Number of shared rows when using weight sharing. Default is 10.
+
+    Returns
+    -------
+    CNNModel
+        Trained CNN model.
+    """
     learning_rate = 1e-3
 
     model = CNNModel(use_weight_sharing=use_weight_sharing, shared_rows=shared_rows)

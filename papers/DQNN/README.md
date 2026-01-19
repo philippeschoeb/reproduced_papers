@@ -11,11 +11,11 @@ Distributed Photonic Quantum Computing (2025)
 ## Overview
 
 ### 🎯 Main goal 
->Classify the reduced MNIST dataset still containing the full 10 digits
+>Classify the reduced MNIST dataset still containing the full 10 digits.
 
 ### Main result
 
->“By leveraging universal linear-optical interferometers ([…]) and matrix product state (MPS) mapping, our framework achieves 10× parameter compression (χ = 4) with only 3.50% relative accuracy loss on MNIST classification (93.29% ± 0.62% vs classical 96.89% ± 0.31%)“
+>“By leveraging universal linear-optical interferometers ([…]) and matrix product state (MPS) mapping, our framework achieves 10× parameter compression (χ = 4) with only 3.50% relative accuracy loss on MNIST classification (93.29% ± 0.62% vs classical 96.89% ± 0.31%)“. Here the MNIST subset was giving as part of Quandela's Perceval Challenge. The repository with the data and all other submissions can be found [here](https://github.com/Quandela/HybridAIQuantum-Challenge).
 
 
 ### Main contributions of the paper
@@ -35,7 +35,12 @@ Source: K.-C. Chen, C.-Y. Liu, Y. Shang, F. Burt, and K. K. Leung, “Distribute
 >
 >The same alternating input state (|01010101⟩) is used for both interferometers.
 >
->The input size of the MPS is ⌈log2m⌉+1 where m is the number of classical parameters in the CNN
+>The input size of the MPS is ⌈log2m⌉+1 where m is the number of classical parameters in the CNN.
+
+### Difference in framework
+
+With MerLin, it is easier to calculate the gradient of a QuantumLayer. So, our implementations allows the user to optimize the boson samplers with Adam instead of COBYLA which can give results of the same precision way faster. In most of our experiment we will use the Adam optimizer in both optimization and it is the one used by default in our implementation. It is still possbile to use COBYLA in our code with a simple prameter change.
+
 
 ### Their results
 
@@ -61,6 +66,8 @@ Source: K.-C. Chen, C.-Y. Liu, Y. Shang, F. Burt, and K. K. Leung, “Distribute
 | 9     | 2703       | 98.373 ± 0.12      | 94.835 ± 0.4       | 0.1624 ± 0.021    |
 | 10     | 3292       | 98.990 ± 0.34     | 95.502 ± 0.84      | 0.2552 ± 0.053    |
 
+Here 200 iterations of training of 5 classical and quantum epochs per iteration were used. For each of those quantum epochs 1000 iterations opf COBYLA were done.
+
 #### Comparing QPT with classical compressing methods
 ![](images/md3.png)
 Source: K.-C. Chen, C.-Y. Liu, Y. Shang, F. Burt, and K. K. Leung, “Distributed Quantum Neural Networks on Distributed Photonic Quantum Computing,” May 13, 2025, arXiv: arXiv:2505.08474. doi: 10.48550/arXiv.2505.08474.
@@ -82,7 +89,19 @@ Source: K.-C. Chen, C.-Y. Liu, Y. Shang, F. Burt, and K. K. Leung, “Distribute
 
 ### Our results
 
-**To come…**
+#### Full QT framework varying the bond lenght (χ)
+Our results are pretty similar to the ones observed in the paper after only one run.
+
+![](results/bond_dimension_graph_long_exp.png)
+
+Here only 100 iterations of training of 5 classical and quantum epochs per iteration were used. By each of those quantum epochs 30 steps of the ADAM optimizer were done. We obtain the same tendancies in a way shorter experimentation time. The bond diomension of 1 seems worse but the other ones follow the same standard.
+
+#### Ablation analysis
+
+![](results/ablation_graph_with_train.png)
+
+We observed a big difference in our ablation analysis. Indeed as said before the ablation study was not done correctly. Here we generated one random vector per experience (it is the same for each epoch). we observe that MPS may be actually doing all of the work. We are basically obtaining the same results per number of parameter while using or not the boson sampler. The usefullness of quantum in this model is here questionned…
+
 
 ## How to Run
 
@@ -114,21 +133,21 @@ Example runs:
 
 ```bash
 # From a JSON config (inside the project)
-python ../../implementation.py --config configs/example.json
+python ../../implementation.py --config configs/defaults.json
 
 # Override some parameters inline
-python ../../implementation.py --config configs/example.json --epochs 50 --lr 1e-3
+python ../../implementation.py --config configs/defaults.json --num_training_rounds 50 
 
 # Equivalent from the repo root
-python implementation.py --paper reproduction_template --config configs/example.json --epochs 50 --lr 1e-3
+python implementation.py --paper reproduction_template --config configs/defaults.json --num_training_rounds 50
 ```
 
 The script saves a snapshot of the resolved config alongside results and logs.
 
 
 ## Project structure
-- `lib/runner.py` — The file to run for every experiment
-- `lib/` — core library modules used by scripts
+- `papers.DQNN.lib/runner.py` — The file to run for every experiment
+- `papers.DQNN.lib/` — core papers.DQNN.library modules used by scripts
   - `TorchMPS/` — Repository to instanciate a MPS tensor module in Torch
   - `ablation_exp.py`, `bond_dimension_exp.py`, `default_exp.py`- Files containing the function to run the corresponding experiment
   - `boson_sampler.py` - The file containg the class managing the quantum layers
@@ -138,7 +157,7 @@ The script saves a snapshot of the resolved config alongside results and logs.
   - `defaults.json`, `cli.json`
 - Other
   - `requirements.txt` — Python dependencies
-  - `tests/` - Unitary tests to make sure the library works correctly
+  - `tests/` - Unitary tests to make sure the papers.DQNN.library works correctly
   - `utils/` — placeholder following the template
 
 ## Results and Analysis
@@ -147,22 +166,20 @@ The script saves a snapshot of the resolved config alongside results and logs.
 - To reproduce the experiments, simply call these lines:
  
  For just a basic training and evaluation:
- >``python3 lib/runner.py --exp_to_run DEFAULT``
+ >``python3 papers.DQNN.lib/runner.py --exp_to_run DEFAULT``
 
  For a analysis of the relation between accuracy and the bond dimension of the MPS:
- >``python3 lib/runner.py --exp_to_run BOND``
+ >``python3 papers.DQNN.lib/runner.py --exp_to_run BOND``
 
   For an ablation study:
- >``python3 lib/runner.py --exp_to_run ABLATION``
+ >``python3 papers.DQNN.lib/runner.py --exp_to_run ABLATION``
 
 
 ## Extensions and Next Steps
 
-Generalize the model to train any neral network model. To start, maybe adaot the code for a CNN pf various sizes.
+- Generalize the model to train any neural network model. To start, maybe adapt the code for a CNN pf various sizes.
 
-## Reproducibility Notes
-
-- TO CHECK
+- Further analyse the pertinence of the quantum layer in the model
 
 ## Testing
 

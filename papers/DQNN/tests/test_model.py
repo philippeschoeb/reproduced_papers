@@ -1,18 +1,18 @@
 import numpy as np
 import pytest
 import merlin as ML
-from lib.boson_sampler import BosonSampler
-from lib.model import PhotonicQuantumTrain, evaluate_model
-from lib.photonic_qt_utils import calculate_qubits
-from lib.classical_utils import create_datasets
-from tests.test_boson_sampler import bs_1, bs_2, setup_session
+from papers.DQNN.lib.boson_sampler import BosonSampler
+from papers.DQNN.lib.model import PhotonicQuantumTrain, evaluate_model
+from papers.DQNN.lib.photonic_qt_utils import calculate_qubits
+from papers.DQNN.lib.classical_utils import create_datasets
+from papers.DQNN.tests.test_boson_sampler import bs_1, bs_2
 import torch.nn as nn
 import torch
 import sys
 import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "TorchMPS"))
-from lib.TorchMPS.torchmps import MPS
+from papers.DQNN.lib.TorchMPS.torchmps import MPS
 
 
 @pytest.fixture

@@ -1,3 +1,10 @@
+"""
+Boson sampler utilities for the DQNN photonic quantum train.
+
+This module defines a boson sampler wrapper that builds parameterized
+photonic circuits and exposes a QuantumLayer for training.
+"""
+
 import perceval as pcvl
 import torch
 from math import comb, pi
@@ -6,27 +13,50 @@ import merlin as ML
 
 ## Quantum-Train Inspired ##
 class BosonSampler:
-    def __init__(self, m: int, n: int, session=None, qnn_layers: int = 1):
-        """
-        A class that combines the Boson Sampler with quantum-train's idea by integrating
-        parametrized quantum logic gates and a classical neural network.
+    """
+    Boson sampler with parameterized photonic circuits for quantum training.
 
-        :param m: Number of modes in the photonic circuit.
-        :param n: Number of photons input into the circuit.
-        :param session: Optional Perceval session for remote simulation.
+    Parameters
+    ----------
+    m : int
+        Number of modes in the photonic circuit.
+    n : int
+        Number of photons input into the circuit.
+    qnn_layers : int, optional
+        Number of interferometer layers to stack. Default is 1.
+    """
+
+    def __init__(self, m: int, n: int, qnn_layers: int = 1):
+        """
+        Initialize the boson sampler and create its quantum layer.
+
+        Parameters
+        ----------
+        m : int
+            Number of modes in the photonic circuit.
+        n : int
+            Number of photons input into the circuit.
+        qnn_layers : int, optional
+            Number of interferometer layers to stack. Default is 1.
         """
         self.m = m
         self.n = n
-        assert n <= m, (
-            "Got more modes than photons, can only input 0 or 1 photon per mode"
-        )
-        self.session = session
+        assert (
+            n <= m
+        ), "Got more modes than photons, can only input 0 or 1 photon per mode"
         self.quantum_layer = self.create_quantum_layer(qnn_layers=qnn_layers)
         self.quantum_layer
 
     @property
     def _nb_parameters_needed(self) -> int:
-        """Number of parameters (theta, phi_i, phi_j) in the circuit."""
+        """
+        Number of parameters (theta, phi_i, phi_j) in the circuit.
+
+        Returns
+        -------
+        int
+            Total number of trainable parameters required by the circuit.
+        """
         # Each beam splitter has theta, and each connected mode has a phase shifter
         # Number of beam splitters in Clements decomposition: m(m-1)/2
         # Thus, total parameters: m(m-1)/2 * 3
@@ -34,22 +64,42 @@ class BosonSampler:
 
     @property
     def nb_parameters(self) -> int:
-        """Maximum number of values in the input tensor."""
+        """
+        Maximum number of values in the input tensor.
+
+        Returns
+        -------
+        int
+            Total number of parameters required by the circuit.
+        """
         return self._nb_parameters_needed
 
     @property
     def embedding_size(self) -> int:
-        """Size of the output probability distribution."""
+        """
+        Size of the output probability distribution.
+
+        Returns
+        -------
+        int
+            Number of output probabilities for the Fock basis.
+        """
 
         return comb(self.m, self.n)
 
-    def create_quantum_circuit(self, qnn_layers=1) -> pcvl.Circuit:
+    def create_quantum_circuit(self, qnn_layers: int = 1) -> pcvl.Circuit:
         """
         Creates a parametrized interferometer using Clements decomposition.
 
-        :return: A Perceval Circuit object.
+        Parameters
+        ----------
+        qnn_layers : int, optional
+            Number of interferometer layers to stack. Default is 1.
 
-        TODO: Regarder peut-être pour une implémentation déjà faite dans Perceval du bloc
+        Returns
+        -------
+        pcvl.Circuit
+            Parameterized Perceval circuit.
         """
         width = len(str(self.nb_parameters - 1))
         parameters = [pcvl.P(f"phi{i:0{width}d}") for i in range(self.nb_parameters)]
@@ -95,12 +145,19 @@ class BosonSampler:
 
         return circuit
 
-    def create_quantum_layer(self, qnn_layers=1) -> ML.QuantumLayer:
+    def create_quantum_layer(self, qnn_layers: int = 1) -> ML.QuantumLayer:
         """
-        TODO: Docstring, je sais pas si je dois spécifier input_dim encore; Après discussion, ici
-        il y en aurait pas, c'est juste un générateur
+        Create the QuantumLayer wrapper for the parameterized circuit.
 
-        TODO: Il doit avoir une manière plus élégante pour initstate
+        Parameters
+        ----------
+        qnn_layers : int, optional
+            Number of interferometer layers to stack. Default is 1.
+
+        Returns
+        -------
+        merlin.QuantumLayer
+            Quantum layer configured with the circuit and input state.
         """
         circuit = self.create_quantum_circuit(qnn_layers=qnn_layers)
 
@@ -127,6 +184,18 @@ class BosonSampler:
         )
 
     def set_params(self, params: torch.Tensor) -> None:
+        """
+        Load a flat parameter vector into the quantum layer.
+
+        Parameters
+        ----------
+        params : torch.Tensor
+            Flat list or tensor of parameters to assign.
+
+        Returns
+        -------
+        None
+        """
         index = 0
         with torch.no_grad():
             for p in self.quantum_layer.parameters():

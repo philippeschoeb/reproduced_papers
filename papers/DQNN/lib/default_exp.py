@@ -1,3 +1,10 @@
+"""
+Default experiment runner for the DQNN photonic quantum train model.
+
+This module trains a classical CNN baseline, then trains and evaluates the
+photonic quantum train model using the specified hyperparameters.
+"""
+
 import torch
 from torch.utils.data import DataLoader
 import sys
@@ -8,29 +15,70 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-from lib.photonic_qt_utils import (
-    setup_session,
+from papers.DQNN.lib.photonic_qt_utils import (
     create_boson_samplers,
     calculate_qubits,
 )
-from lib.model import PhotonicQuantumTrain, train_quantum_model, evaluate_model
-from lib.classical_utils import create_datasets, train_classical_cnn
+from papers.DQNN.lib.model import (
+    PhotonicQuantumTrain,
+    train_quantum_model,
+    evaluate_model,
+)
+from papers.DQNN.lib.classical_utils import (
+    create_datasets,
+    train_classical_cnn,
+)
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 
 def run_default_exp(
     bond_dim: int = 7,
-    num_training_rounds: int = 2,
+    num_training_rounds: int = 50,
     num_epochs: int = 5,
+    num_qnn_train_step: int = 12,
     classical_epochs: int = 5,
     pruning: bool = False,
     pruning_amount: float = 0.5,
     weight_sharing: bool = False,
     shared_rows: int = 10,
     qu_train_with_cobyla: bool = False,
-    num_qnn_train_step: int = 12,
+    generate_graph: bool = True,
 ):
+    """
+    Run the default experiment workflow.
+
+    Parameters
+    ----------
+    bond_dim : int, optional
+        Bond dimension for the photonic quantum train model. Default is 7.
+    num_training_rounds : int, optional
+        Number training rounds: the number of MPS and then the quantum layer training epochs. Default is 50.
+    num_epochs : int, optional
+        Number of epochs per training round for the MPS. Default is 5.
+    num_qnn_train_step : int, optional
+        Number of QNN training steps per round. Default is 12.
+    classical_epochs : int, optional
+        Number of epochs for the classical CNN baseline. Default is 5.
+    pruning : bool, optional
+        Whether to enable pruning during classical training. Default is False.
+    pruning_amount : float, optional
+        Fraction of weights to prune if pruning is enabled. Default is 0.5.
+    weight_sharing : bool, optional
+        Whether to enable weight sharing in the classical model. Default is False.
+    shared_rows : int, optional
+        Number of rows to share if weight sharing is enabled. Default is 10.
+    qu_train_with_cobyla : bool, optional
+        Whether to use COBYLA optimizer for quantum training. Default is False. If COBYLA
+        is to be used, 1000 is the suggested value.
+    generate_graph : bool, optional
+        Whether to plot a summary of train/test metrics after evaluation.
+        Default is True.
+
+    Returns
+    -------
+    None
+    """
 
     print(f"Running experiment with:")
     print(f"  Pruning: {pruning} (amount: {pruning_amount if pruning else 'N/A'})")
@@ -38,8 +86,7 @@ def run_default_exp(
         f"  Weight sharing: {weight_sharing} (shared rows: {shared_rows if weight_sharing else 'N/A'})"
     )
 
-    session = setup_session()
-    bs_1, bs_2 = create_boson_samplers(session)
+    bs_1, bs_2 = create_boson_samplers()
 
     train_dataset, val_dataset, train_loader, val_loader, batch_size = create_datasets()
 
@@ -75,5 +122,12 @@ def run_default_exp(
     )[0]
 
     evaluate_model(
-        qt_model, train_loader, val_loader, bs_1, bs_2, n_qubit, nw_list_normal
+        qt_model,
+        train_loader,
+        val_loader,
+        bs_1,
+        bs_2,
+        n_qubit,
+        nw_list_normal,
+        generate_graph=generate_graph,
     )

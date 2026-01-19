@@ -1,29 +1,92 @@
+"""
+Models and training utilities for the DQNN photonic quantum train.
+
+This module defines the quantum train model, along with training and evaluation
+helpers used by the experiment runners.
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.utils.data import DataLoader
 import numpy as np
 import time
 import sys
 import os
 from scipy.optimize import minimize
-from lib.photonic_qt_utils import generate_qubit_states_torch, probs_to_weights
+from papers.DQNN.lib.photonic_qt_utils import (
+    generate_qubit_states_torch,
+    probs_to_weights,
+)
+from papers.DQNN.lib.boson_sampler import BosonSampler
+from papers.DQNN.utils.utils import plot_training_metrics
+from typing import List, Tuple
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "TorchMPS"))
-from lib.TorchMPS.torchmps import MPS
+from papers.DQNN.lib.TorchMPS.torchmps import MPS
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 
 class PhotonicQuantumTrain(nn.Module):
-    def __init__(self, n_qubit, bond_dim=7):
+    """
+    Photonic quantum train model that maps quantum probabilities to CNN weights.
+
+    Parameters
+    ----------
+    n_qubit : int
+        Number of qubits used to generate the quantum states.
+    bond_dim : int, optional
+        Bond dimension for the MPS mapping network. Default is 7.
+    """
+
+    def __init__(self, n_qubit: int, bond_dim: int = 7):
+        """
+        Initialize the mapping network based on an MPS.
+
+        Parameters
+        ----------
+        n_qubit : int
+            Number of qubits used to generate the quantum states.
+        bond_dim : int, optional
+            Bond dimension for the MPS mapping network. Default is 7.
+        """
         super().__init__()
         self.MappingNetwork = MPS(
             input_dim=n_qubit + 1, output_dim=1, bond_dim=bond_dim
         )
 
-    def forward(self, x, bs_1, bs_2, n_qubit, nw_list_normal):
-        from lib.classical_utils import CNNModel
+    def forward(
+        self,
+        x: torch.Tensor,
+        bs_1: BosonSampler,
+        bs_2: BosonSampler,
+        n_qubit: int,
+        nw_list_normal: List[float],
+    ) -> torch.Tensor:
+        """
+        Run the forward pass by mapping quantum probabilities to CNN weights.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input images tensor.
+        bs_1 : BosonSampler
+            First boson sampler providing a quantum layer.
+        bs_2 : BosonSampler
+            Second boson sampler providing a quantum layer.
+        n_qubit : int
+            Number of qubits used to generate the quantum states.
+        nw_list_normal : List[float]
+            Indices of network weights to keep from the generated probabilities.
+
+        Returns
+        -------
+        torch.Tensor
+            Model logits for classification.
+        """
+        from papers.DQNN.lib.classical_utils import CNNModel
 
         # Generate the probabilities from the quantum layers
         probs_1 = bs_1.quantum_layer()
@@ -80,18 +143,52 @@ class PhotonicQuantumTrain(nn.Module):
 
 
 def train_quantum_model(
-    qt_model,
-    train_loader,
-    train_loader_qnn,
-    bs_1,
-    bs_2,
-    n_qubit,
-    nw_list_normal,
-    num_training_rounds,
-    num_epochs,
-    num_qnn_train_step: int = 1000,
-    qu_train_with_cobyla: bool = True,
-):
+    qt_model: PhotonicQuantumTrain,
+    train_loader: DataLoader,
+    train_loader_qnn: DataLoader,
+    bs_1: BosonSampler,
+    bs_2: BosonSampler,
+    n_qubit: int,
+    nw_list_normal: List[float],
+    num_training_rounds: int,
+    num_epochs: int,
+    num_qnn_train_step: int = 12,
+    qu_train_with_cobyla: bool = False,
+) -> Tuple[PhotonicQuantumTrain, List[float], List[float], List[float]]:
+    """
+    Train the quantum train model and quantum layer parameters.
+
+    Parameters
+    ----------
+    qt_model : PhotonicQuantumTrain
+        Model to train.
+    train_loader : DataLoader
+        Loader for standard training batches.
+    train_loader_qnn : DataLoader
+        Loader for QNN parameter training batches.
+    bs_1 : BosonSampler
+        First boson sampler providing a quantum layer.
+    bs_2 : BosonSampler
+        Second boson sampler providing a quantum layer.
+    n_qubit : int
+        Number of qubits used to generate the quantum states.
+    nw_list_normal : List[float]
+        Indices of network weights to keep from the generated probabilities.
+    num_training_rounds : int
+        Number of training rounds.
+    num_epochs : int
+        Number of epochs per training round for the MPS mapping network.
+    num_qnn_train_step : int, optional
+        Number of optimization steps for the QNN parameters. Default is 12. If the
+        COBYLA optimizer is to be used, 1000 is the suggested value.
+    qu_train_with_cobyla : bool, optional
+        Whether to use COBYLA for QNN optimization. Default is False.
+
+    Returns
+    -------
+    Tuple[PhotonicQuantumTrain, List[float], List[float], List[float]]
+        Trained model, final QNN parameters, epoch losses, and epoch accuracies.
+    """
     step = 1e-3
     q_delta = 2 * np.pi
 
@@ -299,15 +396,47 @@ def train_quantum_model(
 
 
 def evaluate_model(
-    qt_model,
-    train_loader,
-    val_loader,
-    bs_1,
-    bs_2,
-    n_qubit,
-    nw_list_normal,
-    qnn_parameters=None,
-):
+    qt_model: PhotonicQuantumTrain,
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    bs_1: BosonSampler,
+    bs_2: BosonSampler,
+    n_qubit: int,
+    nw_list_normal: List[float],
+    qnn_parameters: List[float] = None,
+    generate_graph: bool = False,
+) -> Tuple[float, float, float]:
+    """
+    Evaluate the model on train and validation sets.
+
+    Parameters
+    ----------
+    qt_model : PhotonicQuantumTrain
+        Trained model to evaluate.
+    train_loader : DataLoader
+        Loader for the training set.
+    val_loader : DataLoader
+        Loader for the validation set.
+    bs_1 : BosonSampler
+        First boson sampler providing a quantum layer.
+    bs_2 : BosonSampler
+        Second boson sampler providing a quantum layer.
+    n_qubit : int
+        Number of qubits used to generate the quantum states.
+    nw_list_normal : List[float]
+        Indices of network weights to keep from the generated probabilities.
+    qnn_parameters : List[float] | None, optional
+        Parameters to temporarily set for evaluation. If None, uses current
+        boson-sampler parameters.
+    generate_graph : bool, optional
+        Whether to plot a summary of train/test metrics after evaluation.
+        Default is False.
+
+    Returns
+    -------
+    tuple[float, float, float]
+        Test accuracy, test loss, and generalization error.
+    """
     if qnn_parameters is not None:
         original_params = []
         for i in bs_1.quantum_layer.parameters():
@@ -334,8 +463,11 @@ def evaluate_model(
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-    print(f"Accuracy on the train set: {(100 * correct / total):.2f}%")
-    print(f"Loss on the train set: {np.mean(loss_train_list):.2f}")
+    acc_train = 100 * correct / total
+    loss_train = np.mean(loss_train_list)
+
+    print(f"Accuracy on the train set: {acc_train:.2f}%")
+    print(f"Loss on the train set: {loss_train:.2f}")
 
     qt_model.eval()
     correct = 0
@@ -352,89 +484,23 @@ def evaluate_model(
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-    print(f"Accuracy on the test set: {(100 * correct / total):.2f}%")
-    print(f"Loss on the test set: {np.mean(loss_test_list):.2f}")
-    print("Generalization error:", np.mean(loss_test_list) - np.mean(loss_train_list))
+    acc_test = 100 * correct / total
+    loss_test = np.mean(loss_test_list)
+    gen_error = np.mean(loss_test_list) - np.mean(loss_train_list)
+
+    print(f"Accuracy on the test set: {acc_test:.2f}%")
+    print(f"Loss on the test set: {loss_test:.2f}")
+    print("Generalization error:", gen_error)
 
     if qnn_parameters is not None:
         bs_1.set_params(original_params[: bs_1.num_effective_params])
         bs_2.set_params(original_params[bs_1.num_effective_params :])
 
+    if generate_graph:
+        plot_training_metrics(acc_train, acc_test, loss_train, loss_test)
 
-# Previous Model file...
-# import torch
-# import torch.nn.functional as F
-# import torch.nn as nn
-# from tqdm import tqdm
-# from lib.boson_sampler import BosonSampler
-# from utils import accuracy
-
-
-# class MnistModel(nn.Module):
-#     def __init__(self, device="cpu", embedding_size=0):
-#         super().__init__()
-#         input_size = 28 * 28
-#         num_classes = 10
-#         self.device = device
-#         self.embedding_size = embedding_size
-#         if self.embedding_size:
-#             input_size += embedding_size  # considering 30 photons and 2 modes
-#         self.linear = nn.Linear(input_size, num_classes)
-
-#     def forward(self, xb, emb=None):
-#         xb = xb.reshape(
-#             -1, 784
-#         )  # Not exactly. xb.reshape(-1, 784) flattens all dimensions into 2D: it keeps the last dimension fixed at 784 and collapses everything else into the first dimension. So it’s not just “reshaping the last dimension”; it’s reshaping the entire tensor to (N, 784) where N is inferred. If xb is e.g. (batch, 1, 28, 28), it becomes (batch, 784) (assuming contiguous).
-#         if self.embedding_size and emb is not None:
-#             # concatenation of the embeddings and the input images
-#             xb = torch.cat((xb, emb), dim=1)
-#         out = self.linear(xb)
-#         return out
-
-#     def training_step(self, batch, emb=None):
-#         images, labels = batch
-#         images, labels = images.to(self.device), labels.to(self.device)
-#         if self.embedding_size:
-#             out = self(images, emb.to(self.device))  ## Generate predictions
-#         else:
-#             out = self(images)  ## Generate predictions
-#         loss = F.cross_entropy(out, labels)  ## Calculate the loss
-#         acc = accuracy(out, labels)
-#         return loss, acc
-
-#     def validation_step(self, batch, emb=None):
-#         images, labels = batch
-#         images, labels = images.to(self.device), labels.to(self.device)
-#         if self.embedding_size:
-#             out = self(images, emb.to(self.device))  ## Generate predictions
-#         else:
-#             out = self(images)  ## Generate predictions
-#         loss = F.cross_entropy(out, labels)
-#         acc = accuracy(out, labels)
-#         return {"val_loss": loss, "val_acc": acc}
-
-#     def validation_epoch_end(self, outputs):
-#         batch_losses = [x["val_loss"] for x in outputs]
-#         epoch_loss = torch.stack(batch_losses).mean()
-#         batch_accs = [x["val_acc"] for x in outputs]
-#         epoch_acc = torch.stack(batch_accs).mean()
-#         return {"val_loss": epoch_loss.item(), "val_acc": epoch_acc.item()}
-
-#     def epoch_end(self, epoch, result):
-#         print(
-#             "Epoch [{}], val_loss: {:.4f}, val_acc: {:.4f}".format(
-#                 epoch, result["val_loss"], result["val_acc"]
-#             )
-#         )
-#         return result["val_loss"], result["val_acc"]
-
-
-# def evaluate(model, val_loader, bs: BosonSampler = None):
-#     if model.embedding_size:
-#         outputs = []
-#         for step, batch in enumerate(tqdm(val_loader)):
-#             embs = bs.quantum_layer()
-#             outputs.append(model.validation_step(batch, emb=embs.unsqueeze(0)))
-#     else:
-#         outputs = [model.validation_step(batch) for batch in val_loader]
-#     return model.validation_epoch_end(outputs)
+    return (
+        acc_test,
+        loss_test,
+        gen_error,
+    )

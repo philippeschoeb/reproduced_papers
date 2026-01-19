@@ -1,0 +1,446 @@
+"""
+Utility functions and datasets for DQNN experiments.
+
+This module provides dataset loaders, plotting helpers, and common metrics.
+"""
+
+import argparse
+import numpy as np
+from torch.utils.data import Dataset
+import os
+import pandas as pd
+import re
+import torch
+import matplotlib.pyplot as plt
+from pathlib import Path
+from typing import Tuple, List
+import pathlib
+
+script_dir = Path(__file__).parent.parent.parent.parent
+DATA_PATH = (script_dir / "data/DQNN").resolve()
+
+
+class MNIST_partial(Dataset):
+    """
+    Dataset wrapper for MNIST-like data stored in CSV files.
+
+    Parameters
+    ----------
+    data : str or pathlib.Path, optional
+        Path to the dataset directory containing `train.csv` and `val.csv`.
+    transform : callable, optional
+        Optional transform applied to each sample.
+    split : {"train", "val"}, optional
+        Dataset split to load. Default is "train".
+    """
+
+    def __init__(
+        self, data: str = DATA_PATH, transform: callable = None, split: str = "train"
+    ):
+        """
+        Initialize the dataset.
+
+        Parameters
+        ----------
+        data : str or pathlib.Path, optional
+            Path to the dataset directory containing `train.csv` and `val.csv`.
+        transform : callable, optional
+            Optional transform applied to each sample.
+        split : {"train", "val"}, optional
+            Dataset split to load. Default is "train".
+        """
+        self.data_dir = data
+        self.transform = transform
+        self.data = []
+
+        if split == "train":
+            filename = os.path.join(self.data_dir, "train.csv")
+        elif split == "val":
+            filename = os.path.join(self.data_dir, "val.csv")
+        else:
+            raise AttributeError(
+                "split!='train' and split!='val': split must be train or val"
+            )
+
+        self.df = pd.read_csv(filename)
+
+    def __len__(self) -> int:
+        """
+        Return the number of samples in the dataset.
+
+        Returns
+        -------
+        int
+            Dataset length.
+        """
+        l = len(self.df["image"])
+        return l
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+        """
+        Return one sample from the dataset.
+
+        Parameters
+        ----------
+        idx : int
+            Sample index.
+
+        Returns
+        -------
+        tuple[torch.Tensor, int]
+            Image tensor and its label.
+        """
+        img = self.df["image"].iloc[idx]
+        label = self.df["label"].iloc[idx]
+        # string to list
+        img_list = re.split(r",", img)
+        # remove '[' and ']'
+        img_list[0] = img_list[0][1:]
+        img_list[-1] = img_list[-1][:-1]
+        # convert to float
+        img_float = [float(el) for el in img_list]
+        # convert to image
+        img_square = torch.unflatten(torch.tensor(img_float), 0, (1, 28, 28))
+        if self.transform is not None:
+            img_square = self.transform(img_square)
+        return img_square, label
+
+
+# compute the accuracy of the model
+def accuracy(outputs: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+    """
+    Compute classification accuracy.
+
+    Parameters
+    ----------
+    outputs : torch.Tensor
+        Model logits of shape (batch, num_classes).
+    labels : torch.Tensor
+        Ground-truth labels of shape (batch,).
+
+    Returns
+    -------
+    torch.Tensor
+        Accuracy as a scalar tensor.
+    """
+    _, preds = torch.max(outputs, dim=1)
+    return torch.tensor(torch.sum(preds == labels).item() / len(preds))
+
+
+def int_list(arg):
+    """
+    Parse a comma-separated string into a list of integers.
+
+    Parameters
+    ----------
+    arg : str
+        Comma-separated integers (e.g., "2,4,8").
+
+    Returns
+    -------
+    list[int]
+        Parsed list of integers.
+    """
+    return list(map(int, arg.split(",")))
+
+
+def parse_args():
+    """
+    Parse command-line arguments for the experiment runner.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed CLI arguments.
+    """
+    parser = argparse.ArgumentParser(description="Photonic Quantum Training")
+    parser.add_argument(
+        "--exp_to_run",
+        type=str,
+        default="DEFAULT",
+        help="Which experiment to run between 'DEFAULT', 'BOND', 'ABLATION'  (default: 'DEFAULT')",
+    )
+    parser.add_argument(
+        "--bond_dim",
+        type=int,
+        default=7,
+        help="ONLY FOR THE DEFAULT EXPERIMENT! Bond dimension for MPS (default: 7)",
+    )
+    parser.add_argument(
+        "--bond_dimensions_to_test",
+        type=int_list,
+        default=np.arange(1, 11),
+        help="ONLY FOR THE ABLATION AND BOND DIMENSION EXPERIMENT! Bond dimension to test for MPS. Each number needs to be seperated by commas. (default: np.arange(1, 11))",
+    )
+    parser.add_argument(
+        "--num_training_rounds",
+        type=int,
+        default=2,
+        help="Number of training rounds for quantum model (default: 2)",
+    )
+    parser.add_argument(
+        "--num_epochs",
+        type=int,
+        default=5,
+        help="Number of epochs for training (default: 5)",
+    )
+    parser.add_argument(
+        "--num_qnn_train_step",
+        type=int,
+        default=12,
+        help="Number of epochs for training the quantum layer (default: 12). If the COBYLA is to be runned, 1000 is the suggested value",
+    )
+    parser.add_argument(
+        "--classical_epochs",
+        type=int,
+        default=1,
+        help="Number of epochs for classical CNN training (default: 1)",
+    )
+    parser.add_argument(
+        "--qu_train_with_cobyla",
+        action="store_true",
+        help="Enable optimize the quantum layer with COBYLA",
+    )
+    parser.add_argument(
+        "--pruning", action="store_true", help="Enable pruning experiment"
+    )
+    parser.add_argument(
+        "--pruning_amount",
+        type=float,
+        default=0.5,
+        help="Pruning amount (default: 0.5)",
+    )
+    parser.add_argument(
+        "--weight_sharing", action="store_true", help="Enable weight sharing experiment"
+    )
+    parser.add_argument(
+        "--shared_rows",
+        type=int,
+        default=10,
+        help="Number of shared rows for weight sharing (default: 10)",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Optional JSON config file to override CLI arguments",
+    )
+    parser.add_argument(
+        "--dont_generate_graph",
+        action="store_true",
+        help="Disable graph generation",
+    )
+    return parser.parse_args()
+
+
+def plot_training_metrics(
+    train_acc: List[float],
+    val_acc: List[float],
+    train_loss: List[float],
+    val_loss: List[float],
+):
+    """
+    Plot training/validation accuracy and loss curves. The plot is
+    saved as a PDF file: /results/training_metrics_graph.pdf
+
+    Parameters
+    ----------
+    train_acc : list[float]
+        Training accuracy per epoch.
+    val_acc : list[float]
+        Validation accuracy per epoch.
+    train_loss : list[float]
+        Training loss per epoch.
+    val_loss : list[float]
+        Validation loss per epoch.
+
+    Returns
+    -------
+    None
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+    X = [i for i in range(len(train_acc))]
+    names = [str(i + 1) for i in range(len(train_acc))]
+    axes[0].plot(X, train_acc, label="training")
+    axes[0].plot(X, val_acc, label="validation")
+    axes[0].set_xlabel("Epochs")
+    axes[0].set_ylabel("ACC")
+    axes[0].set_title("Training and validation accuracies")
+    axes[0].grid(visible=True)
+    axes[0].legend()
+    axes[1].plot(X, train_loss, label="training")
+    axes[1].plot(X, val_loss, label="validation")
+    axes[1].set_xlabel("Epochs")
+    axes[1].set_ylabel("Loss")
+    axes[1].set_title("Training and validation losses")
+    axes[1].grid(visible=True)
+    axes[1].legend()
+    axes[0].set_xticks(ticks=X, labels=names)
+    axes[1].set_xticks(ticks=X, labels=names)
+    plt.savefig(
+        str(pathlib.Path(__file__).parent.parent.resolve())
+        + "/results/training_metrics_graph.pdf",
+        format="pdf",
+        bbox_inches="tight",
+    )
+
+
+def plot_bond_exp(
+    bond_dimensions: List[int],
+    epochs: List[int],
+    loss_list_epoch: List[float],
+    acc_list_epoch: List[float],
+):
+    """
+    Plot the training loss and accuracy over epochs for different bond dimensions.
+
+    This function creates a two-panel plot showing the evolution of training loss
+    and accuracy across epochs for various bond dimension values. The plots are
+    saved as a PDF file: /results/bond_dimension_graph.pdf.
+
+    Parameters
+    -----------
+    bond_dimensions : List[int]
+        List of bond dimension values tested in the experiment.
+    epochs : List[int]
+        List of epoch numbers for the x-axis.
+    loss_list_epoch : List[float]
+        List of loss values for each bond dimension, where each sublist contains
+        loss values per epoch.
+    acc_list_epoch : List[float]
+        List of accuracy values for each bond dimension, where each sublist contains
+        accuracy values per epoch.
+
+    Returns
+    --------
+    None
+    """
+    rng = np.random.default_rng(0)
+
+    # ----------------------------
+    # Plot styling
+    # ----------------------------
+    plt.rcParams.update(
+        {
+            "font.size": 10,
+            "axes.grid": True,
+            "grid.linestyle": ":",
+            "grid.alpha": 0.5,
+            "axes.spines.top": True,
+            "axes.spines.right": True,
+        }
+    )
+
+    cmap = plt.cm.magma
+    colors = [cmap(i) for i in reversed(np.linspace(0.15, 0.95, len(bond_dimensions)))]
+
+    fig, (ax1, ax2) = plt.subplots(
+        1, 2, figsize=(11, 3.2), sharex=True, gridspec_kw={"wspace": 0.18}
+    )
+
+    for i, (bd, col) in enumerate(zip(bond_dimensions, colors)):
+        ax1.plot(epochs, loss_list_epoch[i], color=col, lw=2, alpha=0.95)
+        ax2.plot(
+            epochs,
+            acc_list_epoch[i],
+            color=col,
+            lw=2,
+            alpha=0.95,
+            label=f"bond_dim = {bd}",
+        )
+
+    ax1.set_xlabel("Epoch")
+    ax1.set_ylabel("Training Loss")
+    ax1.set_xlim(1, epochs[-1] + 1)
+    ax1.set_ylim(0, 2.2)
+    ax1.text(
+        -0.12, 1.02, "(a)", transform=ax1.transAxes, fontsize=12, fontweight="bold"
+    )
+    ax2.set_xlabel("Epoch")
+    ax2.set_ylabel("Training Acc (%)")
+    ax2.set_xlim(1, epochs[-1] + 1)
+    ax2.set_ylim(20, 100)
+    ax2.text(
+        -0.12, 1.02, "(b)", transform=ax2.transAxes, fontsize=12, fontweight="bold"
+    )
+
+    # Legend outside the right subplot (like your example)
+    leg = ax2.legend(
+        loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=True, fontsize=9
+    )
+
+    plt.tight_layout()
+    plt.savefig(
+        str(pathlib.Path(__file__).parent.parent.resolve())
+        + "/results/bond_dimension_graph.pdf",
+        format="pdf",
+        bbox_inches="tight",
+    )
+
+
+def plot_ablation_exp(
+    params_qt: List[int],
+    accuracy_qt: List[float],
+    params_ablation: List[int],
+    accuracy_ablation: List[float],
+):
+    """
+    Plot the ablation experiment results comparing photonic QT and the model with a lone MPS layer.
+
+    This function creates a plot showing the testing accuracy versus the number of trainable parameters
+    for both the photonic Quantum Train and the ablation study models. The plot is saved as a PDF file:
+    /results/ablation_graph.pdf.
+
+
+    Parameters
+    -----------
+    params_qt : List[int]
+        List of number of trainable parameters for the photonic QT models.
+    accuracy_qt : list
+        List of testing accuracies for the photonic QT models.
+    params_ablation : List[int]
+        List of number of trainable parameters for the ablation study models.
+    accuracy_ablation : List[float]
+        List of testing accuracies for the ablation study models.
+
+    Returns
+    --------
+    None
+    """
+    plt.plot(
+        params_qt,
+        accuracy_qt,
+        linewidth=1.4,
+        markersize=6,
+        color="#6a1b9a",
+        markerfacecolor="#6a1b9a",
+        markeredgecolor="#4a148c",
+        label="photonic QT",
+    )
+    plt.plot(
+        params_ablation,
+        accuracy_ablation,
+        linewidth=1.4,
+        markersize=6,
+        color="#d65a73",
+        markerfacecolor="#d65a73",
+        markeredgecolor="#b23a4e",
+        label="ablation study",
+    )
+
+    # Axes / styling to match the figure
+    plt.xlabel("# Trainable Parameters")
+    plt.ylabel("Testing Accuracy (%)")
+
+    plt.grid(True, which="major", linestyle=":", linewidth=0.9, alpha=0.6)
+
+    leg = plt.legend(loc="center right", frameon=True)
+    leg.get_frame().set_alpha(0.9)
+
+    plt.tight_layout()
+    plt.savefig(
+        str(pathlib.Path(__file__).parent.parent.resolve())
+        + "/results/ablation_graph.pdf",
+        format="pdf",
+        bbox_inches="tight",
+    )

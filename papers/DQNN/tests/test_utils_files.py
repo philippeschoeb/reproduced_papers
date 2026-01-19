@@ -1,8 +1,11 @@
 import numpy as np
 import pytest
 import torch
-from lib.photonic_qt_utils import generate_qubit_states_torch, probs_to_weights
-from lib.classical_utils import CNNModel
+from papers.DQNN.lib.photonic_qt_utils import (
+    generate_qubit_states_torch,
+    probs_to_weights,
+)
+from papers.DQNN.lib.classical_utils import CNNModel
 
 
 def test_generate_qubit_states_torch():

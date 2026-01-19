@@ -1,38 +1,57 @@
+"""
+Photonic quantum train utilities for DQNN experiments.
+
+This module provides helpers for boson sampler creation,
+qubit calculations, and probability-to-weight mapping utilities.
+"""
+
 import numpy as np
 import torch
 import sys
 import os
+from typing import List, Tuple
+from papers.DQNN.lib.boson_sampler import BosonSampler
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "TorchMPS"))
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 
-def setup_session():
-    session = None
-    if session is not None:
-        session.start()
-    return session
+def create_boson_samplers() -> BosonSampler:
+    """
+    Create the boson samplers used in photonic quantum training.
 
+    Parameters
+    ----------
+    None
 
-def create_boson_samplers(session):
-    from lib.boson_sampler import BosonSampler
-    import perceval as pcvl
-
-    bs_1 = BosonSampler(m=9, n=4, session=session)
+    Returns
+    -------
+    tuple
+        Two BosonSampler instances configured for the experiment.
+    """
+    bs_1 = BosonSampler(m=9, n=4)
     print(
         f"Boson sampler defined with number of parameters = {bs_1.nb_parameters}, and embedding size = {bs_1.embedding_size}"
     )
 
-    bs_2 = BosonSampler(m=8, n=4, session=session)
+    bs_2 = BosonSampler(m=8, n=4)
     print(
         f"Boson sampler defined with number of parameters = {bs_2.nb_parameters}, and embedding size = {bs_2.embedding_size}"
     )
     return bs_1, bs_2
 
 
-def calculate_qubits():
-    from lib.classical_utils import CNNModel
+def calculate_qubits() -> Tuple[int, List[float]]:
+    """
+    Compute the number of qubits required for the CNN weight mapping.
+
+    Returns
+    -------
+    Tuple[int, List[float]]
+        Number of qubits and flattened list of CNN parameters.
+    """
+    from papers.DQNN.lib.classical_utils import CNNModel
 
     standard_model = CNNModel(use_weight_sharing=False, shared_rows=10)
 
@@ -53,7 +72,22 @@ def calculate_qubits():
     return n_qubit, nw_list_normal
 
 
-def probs_to_weights(probs_, model_template):
+def probs_to_weights(probs_: torch.Tensor, model_template: torch.nn.Module) -> dict:
+    """
+    Convert a flat probability tensor into a model state dict.
+
+    Parameters
+    ----------
+    probs_ : torch.Tensor
+        Flattened probability values.
+    model_template : torch.nn.Module
+        Model whose state dict shapes are used for reshaping.
+
+    Returns
+    -------
+    dict
+        State dict with tensors reshaped to match the template model.
+    """
     new_state_dict = {}
     data_iterator = probs_.view(-1)
 
@@ -67,6 +101,19 @@ def probs_to_weights(probs_, model_template):
     return new_state_dict
 
 
-def generate_qubit_states_torch(n_qubit):
+def generate_qubit_states_torch(n_qubit: int) -> torch.Tensor:
+    """
+    Generate all qubit states in the {-1, 1} basis.
+
+    Parameters
+    ----------
+    n_qubit : int
+        Number of qubits.
+
+    Returns
+    -------
+    torch.Tensor
+        Tensor of shape (2**n_qubit, n_qubit) with all basis states.
+    """
     all_states = torch.cartesian_prod(*[torch.tensor([-1, 1]) for _ in range(n_qubit)])
     return all_states
