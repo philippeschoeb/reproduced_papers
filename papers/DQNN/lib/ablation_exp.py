@@ -333,7 +333,7 @@ def run_ablation_exp(
 
                 train_loss /= len(train_loader)
 
-        acc_ab, loss_ab = evaluate_ab_model(ablation_model, val_loader, qnn_parameters)
+        acc_ab, loss_ab = evaluate_ab_model(ablation_model, val_loader)
 
         ################################################################################################################################
         print("QTrain")
