@@ -372,17 +372,15 @@ def run_ablation_exp(
         loss_ablation.append(loss_ab)
         accuracy_ablation.append(acc_ab)
 
-        json_str = json.dumps(
-            {
-                "loss_qt": loss_qt,
-                "accuracy_qt": accuracy_qt,
-                "params_qt": params_qt,
-                "loss_ablation": loss_ablation,
-                "accuracy_ablation": accuracy_ablation,
-                "params_ablation": params_ablation,
-            },
-            indent=4,
-        )
+        json_payload = {
+            "loss_qt": [float(v) for v in loss_qt],
+            "accuracy_qt": [float(v) for v in accuracy_qt],
+            "params_qt": [int(v) for v in params_qt],
+            "loss_ablation": [float(v) for v in loss_ablation],
+            "accuracy_ablation": [float(v) for v in accuracy_ablation],
+            "params_ablation": [int(v) for v in params_ablation],
+        }
+        json_str = json.dumps(json_payload, indent=4)
         with open(current_dir + "ablation_data.json", "w") as f:
             f.write(json_str)
     if generate_graph:
