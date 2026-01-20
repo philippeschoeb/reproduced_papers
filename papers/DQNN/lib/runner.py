@@ -6,18 +6,13 @@ routine (default, bond dimension, or ablation).
 """
 
 import torch
-import pathlib
-import json
 import sys
-import os
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT))
 
 from papers.DQNN.utils.utils import parse_args
-
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -29,6 +24,66 @@ from papers.DQNN.lib.default_exp import run_default_exp
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 
+def _parse_bond_dimensions(value):
+    if value is None:
+        return None
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, str):
+        parts = [chunk.strip() for chunk in value.split(",") if chunk.strip()]
+        return [int(part) for part in parts]
+    return value
+
+
+def train_and_evaluate(cfg, run_dir: Path) -> None:
+    exp_to_run = cfg.get("exp_to_run", "DEFAULT")
+    generate_graph = not cfg.get("dont_generate_graph", False)
+    bond_dimensions_to_test = _parse_bond_dimensions(cfg.get("bond_dimensions_to_test"))
+
+    if exp_to_run == "DEFAULT":
+        print("Running the DEFAULT experiment")
+        run_default_exp(
+            bond_dim=cfg.get("bond_dim", 7),
+            num_training_rounds=cfg.get("num_training_rounds", 2),
+            num_epochs=cfg.get("num_epochs", 5),
+            classical_epochs=cfg.get("classical_epochs", 5),
+            pruning=cfg.get("pruning", False),
+            pruning_amount=cfg.get("pruning_amount", 0.5),
+            weight_sharing=cfg.get("weight_sharing", False),
+            shared_rows=cfg.get("shared_rows", 10),
+            qu_train_with_cobyla=cfg.get("qu_train_with_cobyla", False),
+            num_qnn_train_step=cfg.get("num_qnn_train_step", 12),
+            generate_graph=generate_graph,
+            run_dir=run_dir,
+        )
+    elif exp_to_run == "BOND":
+        print("Running the BOND experiment")
+        run_bond_dimension_exp(
+            bond_dimensions_to_test=bond_dimensions_to_test or list(range(1, 11)),
+            num_training_rounds=cfg.get("num_training_rounds", 2),
+            num_epochs=cfg.get("num_epochs", 5),
+            qu_train_with_cobyla=cfg.get("qu_train_with_cobyla", False),
+            num_qnn_train_step=cfg.get("num_qnn_train_step", 12),
+            generate_graph=generate_graph,
+            run_dir=run_dir,
+        )
+    elif exp_to_run == "ABLATION":
+        print("Running the ABLATION experiment")
+        run_ablation_exp(
+            bond_dimensions_to_test=bond_dimensions_to_test or list(range(1, 11)),
+            num_training_rounds=cfg.get("num_training_rounds", 2),
+            num_epochs=cfg.get("num_epochs", 5),
+            qu_train_with_cobyla=cfg.get("qu_train_with_cobyla", False),
+            num_qnn_train_step=cfg.get("num_qnn_train_step", 12),
+            generate_graph=generate_graph,
+            run_dir=run_dir,
+        )
+    else:
+        raise NameError("No experiment with that name")
+
+
 def main():
     """
     Entry point for running the selected experiment.
@@ -38,24 +93,6 @@ def main():
     None
     """
     args = parse_args()
-    if args.config:
-        with open(
-            str(pathlib.Path(__file__).parent.parent.resolve())
-            + "/configs/"
-            + args.config,
-            "r",
-        ) as f:
-            config = json.load(f)
-        for key, value in config.items():
-            normalized_key = key.lstrip("-")
-            if not hasattr(args, normalized_key):
-                continue
-            current_value = getattr(args, normalized_key)
-            if isinstance(current_value, bool) and isinstance(value, str):
-                value = value.strip().lower() in {"1", "true", "yes", "y", "on"}
-            setattr(args, normalized_key, value)
-
-    print(args)
 
     if args.exp_to_run == "DEFAULT":
         print("Running the DEFAULT experiment")

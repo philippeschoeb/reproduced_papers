@@ -1,11 +1,16 @@
-import numpy as np
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT))
+
 import pytest
-import merlin as ML
-from papers.DQNN.lib.boson_sampler import BosonSampler
-from papers.DQNN.lib.model import PhotonicQuantumTrain, evaluate_model
+from papers.DQNN.lib.model import PhotonicQuantumTrain
 from papers.DQNN.lib.photonic_qt_utils import calculate_qubits
-from papers.DQNN.lib.classical_utils import create_datasets
 from papers.DQNN.tests.test_boson_sampler import bs_1, bs_2
+from papers.DQNN.utils.utils import create_datasets
 import torch.nn as nn
 import torch
 import sys

@@ -18,7 +18,7 @@
     {
       "flags": ["--bond_dimensions_to_test"],
       "help": "ONLY FOR THE ABLATION AND BOND DIMENSION EXPERIMENT! Bond dimension to test for MPS. Each number needs to be seperated by commas. (default: np.arange(1, 11))",
-      "type": "int_list",
+      "type": "str",
       "default": null,
       "apply": {"kind": "config_path", "path": "bond_dim"}
     },
@@ -86,13 +86,6 @@
       "apply": {"kind": "config_path", "path": "shared_rows"}
     },
     {
-      "flags": ["--config"],
-      "help": "Optional JSON config file to override CLI arguments",
-      "type": "str",
-      "default": null,
-      "apply": {"kind": "config_path", "path": "config"}
-    },
-        {
       "flags": ["--dont_generate_graph"],
       "help": "Disable weight sharing experiment",
       "type": "bool",

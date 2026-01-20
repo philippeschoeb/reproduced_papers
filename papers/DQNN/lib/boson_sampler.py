@@ -178,9 +178,8 @@ class BosonSampler:
             circuit=circuit,
             input_state=input_state,
             trainable_parameters=parameters,
-            # measurement_strategy=ML.MeasurementStrategy.PROBABILITIES,     #TODO, CHECK IF NECESSARY DOES NOT SEE IT
             no_bunching=True,
-            output_mapping_strategy=ML.OutputMappingStrategy.NONE,  # Check if LINEAR IS NEEDED IF SO DEFINE OUTPUT SIZE, QUI SERAIT PEUT-ÊTRE embeding size
+            output_mapping_strategy=ML.OutputMappingStrategy.NONE,
         )
 
     def set_params(self, params: torch.Tensor) -> None:

@@ -8,10 +8,8 @@ of the quantum layer in the Quantum Train algorithm.
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(PROJECT_ROOT))
 
 import os
 import time
@@ -33,9 +31,8 @@ from papers.DQNN.lib.model import (
     train_quantum_model,
     evaluate_model,
 )
-from papers.DQNN.utils.utils import plot_ablation_exp
+from papers.DQNN.utils.utils import plot_ablation_exp, create_datasets
 import torch.nn.functional as F
-from papers.DQNN.utils.utils import MNIST_partial
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "TorchMPS"))
 from papers.DQNN.lib.TorchMPS.torchmps import MPS
@@ -45,7 +42,7 @@ device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("
 
 def create_ablation_class(bond):
     """
-    Create an lone MPS model and data loaders for the experiment.
+    Create an lone MPS model for the experiment.
 
     This function defines a CNN model and an ablation module that mimics the quantum train behavior
     using only the classical MPS, along with data loaders for training and validation.
@@ -58,67 +55,14 @@ def create_ablation_class(bond):
     Returns
     --------
     tuple
-        A tuple containing the ablation model (AblationModule), train_loader, and val_loader.
+        A tuple containing the ablation model (AblationModule)
     """
 
-    class CNNModel(nn.Module):
-        """
-        A simple Convolutional Neural Network model for MNIST classification.
+    n_qubit, nw_list_normal = calculate_qubits()
 
-        This model consists of two convolutional layers followed by two fully connected layers.
-        """
-
-        def __init__(self):
-            super(CNNModel, self).__init__()
-            self.conv1 = nn.Conv2d(1, 8, kernel_size=5)
-            self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-            self.conv2 = nn.Conv2d(8, 12, kernel_size=5)
-            self.fc1 = nn.Linear(12 * 4 * 4, 20)
-            self.fc2 = nn.Linear(20, 10)
-
-        def forward(self, x):
-            """
-            Forward pass through the CNN model.
-
-            Parameters
-            -----------
-            x : torch.Tensor
-                Input tensor of shape (batch_size, 1, 28, 28).
-
-            Returns
-            --------
-            torch.Tensor
-                Output tensor of shape (batch_size, 10).
-            """
-            x = self.pool(self.conv1(x))
-            x = self.pool(self.conv2(x))
-            x = x.view(x.size(0), -1)  # [N, 32 * 8 * 8]
-            x = self.fc1(x)
-            x = self.fc2(x)
-            return x
-
-    # dataset from csv file, to use for the challenge
-    train_dataset = MNIST_partial(split="train")
-    val_dataset = MNIST_partial(split="val")
-    batch_size = 1000
-    train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size, shuffle=False)
-    # Instantiate the model and loss function
-    model = CNNModel()
-
-    numpy_weights = {}
-    nw_list = []
-    nw_list_normal = []
-    for name, param in model.state_dict().items():
-        numpy_weights[name] = param.cpu().numpy()
-    for i in numpy_weights:
-        nw_list.append(list(numpy_weights[i].flatten()))
-    for i in nw_list:
-        for j in i:
-            nw_list_normal.append(j)
-    n_qubit = int(np.ceil(np.log2(len(nw_list_normal))))
-
-    random_tensor = torch.randn(126 * 70, 1)
+    random_tensor = torch.randn(
+        126 * 70, 1
+    )  # TODO FOr generalization, change to arbitrary size, here is the number of combinations of each BS (4 in 9) and (4 in 8)
 
     class AblationModule(nn.Module):
         """
@@ -156,7 +100,6 @@ def create_ablation_class(bond):
 
             probs_ = random_tensor
 
-            # probs_ = trans_res.to(device)
             probs_ = probs_[: len(nw_list_normal)]
             probs_ = probs_.reshape(len(nw_list_normal), 1)
 
@@ -219,7 +162,7 @@ def create_ablation_class(bond):
 
             return x
 
-    return AblationModule().to(device), train_loader, val_loader
+    return AblationModule().to(device)
 
 
 def evaluate_ab_model(
@@ -274,13 +217,14 @@ def run_ablation_exp(
     qu_train_with_cobyla: bool = False,
     num_qnn_train_step: int = 12,
     generate_graph: bool = True,
+    run_dir: Path = None,
 ):
     """
     Run ablation experiments to evaluate the importance of the quantum layer in the Quantum Train.
 
     This function iterates over a list of bond dimensions, trains both the photonic QT and an ablation
     study model, collects training loss and accuracy metrics, saves the results to a JSON file
-    (/results/ablation_data.json), and generates a plot comparing the performance across models.
+    (/results/ablation_data.json), and can generate a plot comparing the performance across models.
 
     Parameters
     -----------
@@ -289,7 +233,7 @@ def run_ablation_exp(
     num_training_rounds : int, optional
         Number of training rounds (epochs) of MPS and quantum training. Default is 200.
     num_epochs : int, optional
-        Number of epochs for per trainaing round for the MPS. Default is 5.
+        Number of epochs for per training round for the MPS. Default is 5.
     qu_train_with_cobyla : bool, optional
         Whether to use COBYLA optimizer for quantum training. Default is False.
     num_qnn_train_step : int, optional
@@ -298,6 +242,9 @@ def run_ablation_exp(
     generate_graph : bool, optional
         Whether to plot a the resulting graph of the experiment.
         Default is True.
+    run_dir : pathlib.Path, optional
+        Output directory for the PDF when running via the shared runtime. If None,
+        the plot is saved under the local results folder.
 
     Returns
     --------
@@ -312,25 +259,22 @@ def run_ablation_exp(
     accuracy_qt = []
     params_qt = []
 
-    num_epochs = 5
+    _, _, train_loader, val_loader = create_datasets(batch_size=1000)
 
     for bond in bond_dimensions_to_test:
-
         ### QTrain
-        ## QTrain
         bs_1, bs_2 = create_boson_samplers()
         n_qubit, nw_list_normal = calculate_qubits()
         qt_model = PhotonicQuantumTrain(n_qubit, bond_dim=bond).to(device)
 
         ### Ablation
-        ablation_model, train_loader, val_loader = create_ablation_class(bond=bond)
+        ablation_model = create_ablation_class(bond=bond)
 
         params_ablation.append(
             sum(p.numel() for p in ablation_model.parameters() if p.requires_grad)
         )
 
         # Training setting
-
         step = 1e-3  # Learning rate
         q_delta = 2 * np.pi
 
@@ -341,14 +285,9 @@ def run_ablation_exp(
         qnn_parameters = init_qnn_parameters
         criterion = nn.CrossEntropyLoss()
 
-        optimizer = optim.Adam(
-            ablation_model.parameters(), lr=step
-        )  # , weight_decay=1e-5, eps=1e-6)
+        optimizer = optim.Adam(ablation_model.parameters(), lr=step)
 
-        #############################################
-        ### Training loop ###########################
-        #############################################
-
+        # Training loop for the ablation
         for round_ in range(num_training_rounds):
             print("-----------------------")
             print("Ablation")
@@ -370,8 +309,6 @@ def run_ablation_exp(
                     optimizer.zero_grad()
                     # Forward pass
                     outputs = ablation_model(images)
-                    # print("output: ", outputs)
-                    labels_one_hot = F.one_hot(labels, num_classes=10).float()
                     _, predicted = torch.max(outputs.data, 1)
                     total += labels.size(0)
                     correct += (predicted == labels).sum().item()
@@ -461,6 +398,7 @@ def run_ablation_exp(
             accuracy_qt=accuracy_qt,
             params_ablation=params_ablation,
             accuracy_ablation=accuracy_ablation,
+            run_dir=run_dir,
         )
 
 

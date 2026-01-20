@@ -5,78 +5,36 @@ This module provides dataset loaders, plotting helpers, and common metrics.
 """
 
 import argparse
+from datasets import load_dataset
 import numpy as np
 from torch.utils.data import Dataset
-import os
 import pandas as pd
-import re
+import regex as re
 import torch
 import matplotlib.pyplot as plt
 from pathlib import Path
 from typing import Tuple, List
+from torch.utils.data import DataLoader
 import pathlib
 
 script_dir = Path(__file__).parent.parent.parent.parent
 DATA_PATH = (script_dir / "data/DQNN").resolve()
 
 
-class MNIST_partial(Dataset):
+class HFImageDataset(Dataset):
     """
-    Dataset wrapper for MNIST-like data stored in CSV files.
-
-    Parameters
-    ----------
-    data : str or pathlib.Path, optional
-        Path to the dataset directory containing `train.csv` and `val.csv`.
-    transform : callable, optional
-        Optional transform applied to each sample.
-    split : {"train", "val"}, optional
-        Dataset split to load. Default is "train".
+    Torch Dataset wrapper for HF datasets with image/label pairs.
     """
 
-    def __init__(
-        self, data: str = DATA_PATH, transform: callable = None, split: str = "train"
-    ):
-        """
-        Initialize the dataset.
-
-        Parameters
-        ----------
-        data : str or pathlib.Path, optional
-            Path to the dataset directory containing `train.csv` and `val.csv`.
-        transform : callable, optional
-            Optional transform applied to each sample.
-        split : {"train", "val"}, optional
-            Dataset split to load. Default is "train".
-        """
-        self.data_dir = data
+    def __init__(self, dataset, transform: callable = None):
+        self.dataset = pd.DataFrame(dataset)
         self.transform = transform
-        self.data = []
-
-        if split == "train":
-            filename = os.path.join(self.data_dir, "train.csv")
-        elif split == "val":
-            filename = os.path.join(self.data_dir, "val.csv")
-        else:
-            raise AttributeError(
-                "split!='train' and split!='val': split must be train or val"
-            )
-
-        self.df = pd.read_csv(filename)
 
     def __len__(self) -> int:
-        """
-        Return the number of samples in the dataset.
-
-        Returns
-        -------
-        int
-            Dataset length.
-        """
-        l = len(self.df["image"])
+        l = len(self.dataset["image"])
         return l
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+    def __getitem__(self, idx: int):
         """
         Return one sample from the dataset.
 
@@ -90,8 +48,8 @@ class MNIST_partial(Dataset):
         tuple[torch.Tensor, int]
             Image tensor and its label.
         """
-        img = self.df["image"].iloc[idx]
-        label = self.df["label"].iloc[idx]
+        img = self.dataset["image"].iloc[idx]
+        label = self.dataset["label"].iloc[idx]
         # string to list
         img_list = re.split(r",", img)
         # remove '[' and ']'
@@ -104,6 +62,32 @@ class MNIST_partial(Dataset):
         if self.transform is not None:
             img_square = self.transform(img_square)
         return img_square, label
+
+
+def create_datasets(
+    batch_size: int = 128,
+) -> Tuple[Dataset, Dataset, DataLoader, DataLoader]:
+    """
+    Create MNIST train/validation datasets and data loaders.
+    Parameters
+    ----------
+    batch_size: int
+        The number of elements per batches. Default is 128
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, DataLoader, DataLoader]
+        Train dataset, validation dataset, train loader and validation loader.
+    """
+    train_dataset = HFImageDataset(
+        load_dataset("Quandela/PercevalQuest-MNIST", split="train")
+    )
+    val_dataset = HFImageDataset(
+        load_dataset("Quandela/PercevalQuest-MNIST", split="validation")
+    )
+    train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size, shuffle=False)
+    return train_dataset, val_dataset, train_loader, val_loader
 
 
 # compute the accuracy of the model
@@ -236,10 +220,11 @@ def parse_args():
 def plot_training_metrics(
     loss_list_epoch: List[float],
     acc_list_epoch: List[float],
+    run_dir: Path = None,
 ):
     """
     Plot training accuracy and loss curves side by side. The plot is
-    saved as a PDF file: /results/training_metrics_graph.pdf
+    saved as a PDF file: results/training_metrics_graph.pdf (or to run_dir if set).
 
     Parameters
     ----------
@@ -247,6 +232,9 @@ def plot_training_metrics(
         Training loss per epoch.
     acc_list_epoch : list[float]
         Training accuracy per epoch.
+    run_dir : pathlib.Path, optional
+        Output directory for the PDF when running via the shared runtime. If None,
+        the plot is saved under the local results folder.
 
     Returns
     -------
@@ -271,12 +259,17 @@ def plot_training_metrics(
     ax_acc.set_ylabel("Accuracy (%)")
 
     plt.tight_layout()
-    output_path = (
-        pathlib.Path(__file__).parent.parent.resolve()
-        / "results"
-        / "training_metrics_graph.pdf"
-    )
-    plt.savefig(output_path, format="pdf", bbox_inches="tight")
+    if run_dir is None:
+        output_path = (
+            pathlib.Path(__file__).parent.parent.resolve()
+            / "results"
+            / "training_metrics_graph.pdf"
+        )
+        plt.savefig(output_path, format="pdf", bbox_inches="tight")
+    else:
+        plt.savefig(
+            run_dir / "training_metrics_graph.pdf", format="pdf", bbox_inches="tight"
+        )
 
 
 def plot_bond_exp(
@@ -284,13 +277,14 @@ def plot_bond_exp(
     epochs: List[int],
     loss_list_epoch: List[float],
     acc_list_epoch: List[float],
+    run_dir: Path = None,
 ):
     """
     Plot the training loss and accuracy over epochs for different bond dimensions.
 
     This function creates a two-panel plot showing the evolution of training loss
     and accuracy across epochs for various bond dimension values. The plots are
-    saved as a PDF file: /results/bond_dimension_graph.pdf.
+    saved as a PDF file: results/bond_dimension_graph.pdf (or to run_dir if set).
 
     Parameters
     -----------
@@ -304,6 +298,9 @@ def plot_bond_exp(
     acc_list_epoch : List[float]
         List of accuracy values for each bond dimension, where each sublist contains
         accuracy values per epoch.
+    run_dir : pathlib.Path, optional
+        Output directory for the PDF when running via the shared runtime. If None,
+        the plot is saved under the local results folder.
 
     Returns
     --------
@@ -364,12 +361,19 @@ def plot_bond_exp(
     )
 
     plt.tight_layout()
-    plt.savefig(
-        str(pathlib.Path(__file__).parent.parent.resolve())
-        + "/results/bond_dimension_graph.pdf",
-        format="pdf",
-        bbox_inches="tight",
-    )
+    if run_dir is None:
+        plt.savefig(
+            str(pathlib.Path(__file__).parent.parent.resolve())
+            + "/results/bond_dimension_graph.pdf",
+            format="pdf",
+            bbox_inches="tight",
+        )
+    else:
+        plt.savefig(
+            run_dir / "bond_dimension_graph.pdf",
+            format="pdf",
+            bbox_inches="tight",
+        )
 
 
 def plot_ablation_exp(
@@ -377,13 +381,14 @@ def plot_ablation_exp(
     accuracy_qt: List[float],
     params_ablation: List[int],
     accuracy_ablation: List[float],
+    run_dir: Path = None,
 ):
     """
     Plot the ablation experiment results comparing photonic QT and the model with a lone MPS layer.
 
     This function creates a plot showing the testing accuracy versus the number of trainable parameters
     for both the photonic Quantum Train and the ablation study models. The plot is saved as a PDF file:
-    /results/ablation_graph.pdf.
+    results/ablation_graph.pdf (or to run_dir if set).
 
 
     Parameters
@@ -396,6 +401,9 @@ def plot_ablation_exp(
         List of number of trainable parameters for the ablation study models.
     accuracy_ablation : List[float]
         List of testing accuracies for the ablation study models.
+    run_dir : pathlib.Path, optional
+        Output directory for the PDF when running via the shared runtime. If None,
+        the plot is saved under the local results folder.
 
     Returns
     --------
@@ -432,9 +440,16 @@ def plot_ablation_exp(
     leg.get_frame().set_alpha(0.9)
 
     plt.tight_layout()
-    plt.savefig(
-        str(pathlib.Path(__file__).parent.parent.resolve())
-        + "/results/ablation_graph.pdf",
-        format="pdf",
-        bbox_inches="tight",
-    )
+    if run_dir is None:
+        plt.savefig(
+            str(pathlib.Path(__file__).parent.parent.resolve())
+            + "/results/ablation_graph.pdf",
+            format="pdf",
+            bbox_inches="tight",
+        )
+    else:
+        plt.savefig(
+            run_dir / "ablation_graph.pdf",
+            format="pdf",
+            bbox_inches="tight",
+        )

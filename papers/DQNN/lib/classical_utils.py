@@ -7,12 +7,10 @@ used alongside the photonic quantum train.
 
 import torch
 import torch.nn as nn
-import pandas as pd
 import torch.optim as optim
 import torch.nn.utils.prune as prune
 from torch.utils.data import DataLoader
-from typing import List, Tuple
-from papers.DQNN.utils.utils import MNIST_partial
+from typing import List
 
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
@@ -224,24 +222,6 @@ class MaskedAdam(torch.optim.Adam):
                 grad_mask = param.data != 0
                 param.grad.data.mul_(grad_mask)
         super().step(closure)
-
-
-def create_datasets() -> Tuple[pd.DataFrame, pd.DataFrame, DataLoader, DataLoader, int]:
-    """
-    Create MNIST train/validation datasets and data loaders.
-
-    Returns
-    -------
-    Tuple[pd.DataFrame, pd.DataFrame, DataLoader, DataLoader, int]
-        Train dataset, validation dataset, train loader, validation loader,
-        and batch size.
-    """
-    train_dataset = MNIST_partial(split="train")
-    val_dataset = MNIST_partial(split="val")
-    batch_size = 128
-    train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size, shuffle=False)
-    return train_dataset, val_dataset, train_loader, val_loader, batch_size
 
 
 def train_classical_cnn(

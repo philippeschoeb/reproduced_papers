@@ -8,10 +8,8 @@ bond dimensions on the performance of the Quantum Train.
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(PROJECT_ROOT))
 
 import pathlib
 import numpy as np
@@ -24,8 +22,7 @@ from papers.DQNN.lib.photonic_qt_utils import (
     calculate_qubits,
 )
 from papers.DQNN.lib.model import PhotonicQuantumTrain, train_quantum_model
-from papers.DQNN.lib.classical_utils import create_datasets
-from papers.DQNN.utils.utils import plot_bond_exp
+from papers.DQNN.utils.utils import plot_bond_exp, create_datasets
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -37,6 +34,7 @@ def run_bond_dimension_exp(
     qu_train_with_cobyla: bool = False,
     num_qnn_train_step: int = 12,
     generate_graph: bool = True,
+    run_dir: Path = None,
 ):
     """
     Run experiments to evaluate the impact of different bond dimensions on the performance of the Quantum Train.
@@ -52,7 +50,7 @@ def run_bond_dimension_exp(
     num_training_rounds : int, optional
         Number of training rounds (epochs) of MPS and quantum training. Default is 200.
     num_epochs : int, optional
-        Number of epochs for per trainaing round for the MPS. Default is 5.
+        Number of epochs for per training round for the MPS. Default is 5.
     qu_train_with_cobyla : bool, optional
         Whether to use COBYLA optimizer for quantum training. Default is False.
     num_qnn_train_step : int, optional
@@ -61,6 +59,9 @@ def run_bond_dimension_exp(
     generate_graph : bool, optional
         Whether to plot a the resulting graph of the experiment.
         Default is True.
+    run_dir : pathlib.Path, optional
+        Output directory for the PDF when running via the shared runtime. If None,
+        the plot is saved under the local results folder.
     Returns
     --------
     None
@@ -73,9 +74,7 @@ def run_bond_dimension_exp(
     for bd in bond_dimensions_to_test:
         bs_1, bs_2 = create_boson_samplers()
 
-        train_dataset, val_dataset, train_loader, val_loader, batch_size = (
-            create_datasets()
-        )
+        train_dataset, _, train_loader, _ = create_datasets()
 
         n_qubit, nw_list_normal = calculate_qubits()
 
@@ -84,7 +83,7 @@ def run_bond_dimension_exp(
         batch_size_qnn = 1000
         train_loader_qnn = DataLoader(train_dataset, batch_size_qnn, shuffle=True)
 
-        qt_model, qnn_parameters, loss_list_epoch, acc_list_epoch = train_quantum_model(
+        qt_model, _, loss_list_epoch, acc_list_epoch = train_quantum_model(
             qt_model,
             train_loader,
             train_loader_qnn,
@@ -105,7 +104,11 @@ def run_bond_dimension_exp(
             f.write(json_str)
     if generate_graph:
         plot_bond_exp(
-            bond_dimensions_to_test, np.arange(num_training_rounds), losses, accuracies
+            bond_dimensions_to_test,
+            np.arange(num_training_rounds),
+            losses,
+            accuracies,
+            run_dir=run_dir,
         )
 
 
