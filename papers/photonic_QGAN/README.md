@@ -17,59 +17,62 @@
 
 ## Project layout
 
+# Project Layout
+```
 .
-├── README.md                          # Overview, layout, and run commands
-├── requirements.txt                   # Python dependencies
-├── photonicQGAN.png                   # Figure for overview section
-├── __init__.py                        # Package marker
+├── README.md                                    # Overview, layout, and run commands
+├── requirements.txt                             # Python dependencies
+├── photonicQGAN.png                             # Figure for overview section
+├── __init__.py                                  # Package marker
 │
 ├── configs/
-│   ├── cli.json                       # CLI schema for runtime runner
-│   └── defaults.json                  # Default configuration for runs
+│   ├── cli.json                                 # CLI schema for runtime runner
+│   └── defaults.json                            # Default configuration for runs
 │
 ├── lib/
-│   ├── __init__.py                    # Package marker
-│   ├── runner.py                      # Runtime entrypoint and training loop
-│   ├── qgan.py                        # QGAN model wrapper
-│   ├── generators.py                  # Classical and photonic patch generators
-│   ├── discriminator.py               # Discriminator network
-│   └── classical_generator.dict       # Serialized classical generator state
+│   ├── __init__.py                              # Package marker
+│   ├── runner.py                                # Runtime entrypoint and training loop
+│   ├── qgan.py                                  # QGAN model wrapper
+│   ├── generators.py                            # Classical and photonic patch generators
+│   ├── discriminator.py                         # Discriminator network
+│   └── classical_generator.dict                 # Serialized classical generator state
 │
 ├── utils/
-│   ├── __init__.py                    # Package marker
-│   ├── mappings.py                    # Output mapping utilities for photonic states
-│   ├── pqc.py                         # Parametrized photonic quantum circuit helpers
-│   ├── spsa.py                        # SPSA optimizer implementation
-│   └── visualize.py                   # Visualization helpers for training artifacts
+│   ├── __init__.py                              # Package marker
+│   ├── mappings.py                              # Output mapping utilities for photonic states
+│   ├── pqc.py                                   # Parametrized photonic quantum circuit helpers
+│   ├── spsa.py                                  # SPSA optimizer implementation
+│   └── visualize.py                             # Visualization helpers for training artifacts
 │
 ├── notebooks/
-│   ├── qgan_digits.ipynb              # Digits-mode notebook run
-│   ├── qgan_ideal.ipynb               # Ideal-mode notebook run
-│   ├── qgan_noisy.ipynb               # Noisy-mode notebook run
-│   ├── classical_gan.ipynb            # Baseline classical GAN notebook
-│   ├── analyse.ipynb                  # Analysis notebook for results
-│   ├── parse_results_digits.ipynb     # Parsing/plotting for digits runs
-│   ├── parse_results_ideal.ipynb      # Parsing/plotting for ideal runs
-│   ├── parse_results_noisy.ipynb      # Parsing/plotting for noisy runs
+│   ├── qgan_digits.ipynb                        # Digits-mode notebook run
+│   ├── qgan_ideal.ipynb                         # Ideal-mode notebook run
+│   ├── qgan_noisy.ipynb                         # Noisy-mode notebook run
+│   ├── classical_gan.ipynb                      # Baseline classical GAN notebook
+│   ├── analyse.ipynb                            # Analysis notebook for results
+│   ├── parse_results_digits.ipynb               # Parsing/plotting for digits runs
+│   ├── parse_results_ideal.ipynb                # Parsing/plotting for ideal runs
+│   ├── parse_results_noisy.ipynb                # Parsing/plotting for noisy runs
 │   └── qpu/
-│       ├── config.json                # Stored QPU config example
-│       ├── fake_progress.csv          # Sample generated data for QPU run
-│       ├── loss_progress.csv          # Sample loss curves for QPU run
-│       └── G_params_progress.csv      # Sample generator parameters for QPU run
+│       ├── config.json                          # Stored QPU config example
+│       ├── fake_progress.csv                    # Sample generated data for QPU run
+│       ├── loss_progress.csv                    # Sample loss curves for QPU run
+│       └── G_params_progress.csv                # Sample generator parameters for QPU run
 │
 ├── tests/
-│   ├── common.py                      # Shared test utilities
-│   ├── test_cli.py                    # CLI smoke tests
-│   └── test_smoke.py                  # Basic run wiring smoke test
+│   ├── common.py                                # Shared test utilities
+│   ├── test_cli.py                              # CLI smoke tests
+│   └── test_smoke.py                            # Basic run wiring smoke test
 │
-├── outdir/                            # Generated run artifacts (logs, configs, CSVs, images)
-├── results/                           # Generated run artifacts (logs, configs, CSVs, images)
+├── outdir/                                      # Generated run artifacts (logs, configs, CSVs, images)
+├── results/                                     # Generated run artifacts (logs, configs, CSVs, images)
 │
-└── ../
+└── ../                                          # Parent directory
     ├── data/photonic_QGAN/
-    │   └── optdigits_csv.csv          # Dataset CSV
+    │   └── optdigits_csv.csv                    # Dataset CSV
     └── papers/shared/photonic_QGAN/
-        └── digits.py                  # Shared dataset utilities
+        └── digits.py                            # Shared dataset utilities
+```
 
 ## Modes
 
