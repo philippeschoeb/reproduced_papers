@@ -7,6 +7,7 @@ sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT))
 
 import numpy as np
+import torch
 import pytest
 import merlin as ML
 from papers.DQNN.lib.boson_sampler import BosonSampler
@@ -69,4 +70,4 @@ def test_set_params(bs_1):
 def test_embedding_size(bs_1):
     bs = bs_1
     assert bs.embedding_size == 126
-    assert len(bs.quantum_layer()) == 126
+    assert len(torch.flatten(bs.quantum_layer())) == 126

@@ -23,7 +23,7 @@ from papers.DQNN.lib.boson_sampler import BosonSampler
 from typing import List, Tuple
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "TorchMPS"))
-from papers.DQNN.lib.TorchMPS.torchmps import MPS
+from papers.DQNN.lib.torchmps.torchmps import MPS
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -85,8 +85,8 @@ class PhotonicQuantumTrain(nn.Module):
         from papers.DQNN.lib.classical_utils import CNNModel
 
         # Generate the probabilities from the quantum layers
-        probs_1 = bs_1.quantum_layer()
-        probs_2 = bs_2.quantum_layer()
+        probs_1 = torch.flatten(bs_1.quantum_layer())
+        probs_2 = torch.flatten(bs_2.quantum_layer())
         probs_ = (
             torch.outer(probs_1, probs_2)
             .flatten()
