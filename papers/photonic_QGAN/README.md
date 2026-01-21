@@ -1,5 +1,7 @@
 # Photonic Quantum Generative Adversarial Networks for classical data
 
+## IMPORTANT: only in Perceval for now
+
 ## Reference and Attribution
 
 - Paper: Photonic quantum generative adversarial networks for classical data (Optica Quantum, 2025)
@@ -83,6 +85,19 @@
 - `ideal`: sweeps a grid of generator configs (no digit filtering). The grid comes from
   `ideal.use_default_grid` or a JSON list at `ideal.config_grid_path`; each config is saved
   under `results/.../ideal/config_<n>/config.json`.
+
+## MerlinQuantum migration notes
+
+A few notes to migrate this project to MerlinQuantum, the following steps are reasonable (but these are just advices, there may be other ways):
+
+- Replace `PatchGenerator` with a `MerLin.QuantumLayer`-based module.
+  - Option A: translate the Perceval circuit directly into a `QuantumLayer` object (if a direct importer exists).
+  - Option B: rebuild the architecture with the builder API and map the current `arch` list to that builder.
+- Remark: SLOS is the built-in back-end of MerLin
+- Swap the SPSA optimizer for a standard `torch.optim` optimizer (Adam/SGD), since the MerlinQuantum layer is differentiable [Note: it could be pertinent to compare both training]
+- Keep the discriminator unchanged; only the generator training path and parameter update logic should change.
+- Update config/schema to reflect the new generator backend (e.g., `generator_backend: perceval|merlin`).
+- Save the models at the end of training using PyTorch built-in state_dict method
 
 ## Running
 
