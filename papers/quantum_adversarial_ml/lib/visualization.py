@@ -7,20 +7,19 @@ matching figures from the Lu et al. (2020) paper.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 
 
 def plot_training_curves(
-    history: Dict[str, List[float]],
+    history: dict[str, list[float]],
     title: str = "Training Progress",
-    save_path: Optional[str] = None
+    save_path: Optional[str] = None,
 ):
     """Plot training loss and accuracy curves.
 
@@ -36,29 +35,29 @@ def plot_training_curves(
     epochs = range(1, len(history["train_loss"]) + 1)
 
     # Loss plot
-    ax1.plot(epochs, history["train_loss"], 'b-', label='Train')
+    ax1.plot(epochs, history["train_loss"], "b-", label="Train")
     if "test_loss" in history:
-        ax1.plot(epochs, history["test_loss"], 'r-', label='Validation')
-    ax1.set_xlabel('Epoch')
-    ax1.set_ylabel('Loss')
-    ax1.set_title(f'{title} - Loss')
+        ax1.plot(epochs, history["test_loss"], "r-", label="Validation")
+    ax1.set_xlabel("Epoch")
+    ax1.set_ylabel("Loss")
+    ax1.set_title(f"{title} - Loss")
     ax1.legend()
     ax1.grid(True, alpha=0.3)
 
     # Accuracy plot
-    ax2.plot(epochs, history["train_acc"], 'b-', label='Train')
+    ax2.plot(epochs, history["train_acc"], "b-", label="Train")
     if "test_acc" in history:
-        ax2.plot(epochs, history["test_acc"], 'r-', label='Validation')
-    ax2.set_xlabel('Epoch')
-    ax2.set_ylabel('Accuracy')
-    ax2.set_title(f'{title} - Accuracy')
+        ax2.plot(epochs, history["test_acc"], "r-", label="Validation")
+    ax2.set_xlabel("Epoch")
+    ax2.set_ylabel("Accuracy")
+    ax2.set_title(f"{title} - Accuracy")
     ax2.legend()
     ax2.grid(True, alpha=0.3)
 
     plt.tight_layout()
 
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
         plt.close()
     else:
         plt.show()
@@ -71,10 +70,10 @@ def plot_adversarial_examples(
     adv_predictions: torch.Tensor,
     clean_predictions: torch.Tensor,
     n_examples: int = 4,
-    image_size: Optional[Tuple[int, int]] = None,
-    class_names: Optional[List[str]] = None,
+    image_size: Optional[tuple[int, int]] = None,
+    class_names: Optional[list[str]] = None,
     title: str = "Adversarial Examples",
-    save_path: Optional[str] = None
+    save_path: Optional[str] = None,
 ):
     """Plot clean images and their adversarial counterparts.
 
@@ -101,7 +100,7 @@ def plot_adversarial_examples(
         else:
             # Not a square image, try to display as 1D or find factors
             image_size = (1, total_size)
-    
+
     fig, axes = plt.subplots(2, n_examples, figsize=(3 * n_examples, 6))
 
     for i in range(n_examples):
@@ -115,18 +114,26 @@ def plot_adversarial_examples(
         except ValueError:
             # If reshape fails, just display as 1D
             clean_img = clean_data.reshape(1, -1)
-        
-        axes[0, i].imshow(clean_img, cmap='gray', aspect='auto')
+
+        axes[0, i].imshow(clean_img, cmap="gray", aspect="auto")
         clean_pred = clean_predictions[i].item()
         true_label = clean_labels[i].item()
 
         if class_names:
-            pred_name = class_names[clean_pred] if clean_pred < len(class_names) else str(clean_pred)
-            true_name = class_names[true_label] if true_label < len(class_names) else str(true_label)
-            axes[0, i].set_title(f'Clean\nTrue: {true_name}\nPred: {pred_name}')
+            pred_name = (
+                class_names[clean_pred]
+                if clean_pred < len(class_names)
+                else str(clean_pred)
+            )
+            true_name = (
+                class_names[true_label]
+                if true_label < len(class_names)
+                else str(true_label)
+            )
+            axes[0, i].set_title(f"Clean\nTrue: {true_name}\nPred: {pred_name}")
         else:
-            axes[0, i].set_title(f'Clean\nTrue: {true_label}\nPred: {clean_pred}')
-        axes[0, i].axis('off')
+            axes[0, i].set_title(f"Clean\nTrue: {true_label}\nPred: {clean_pred}")
+        axes[0, i].axis("off")
 
         # Adversarial image
         adv_data = adv_images[i].cpu().numpy().flatten()
@@ -134,34 +141,36 @@ def plot_adversarial_examples(
             adv_img = adv_data.reshape(image_size)
         except ValueError:
             adv_img = adv_data.reshape(1, -1)
-        
-        axes[1, i].imshow(adv_img, cmap='gray', aspect='auto')
+
+        axes[1, i].imshow(adv_img, cmap="gray", aspect="auto")
         adv_pred = adv_predictions[i].item()
 
         if class_names:
-            adv_pred_name = class_names[adv_pred] if adv_pred < len(class_names) else str(adv_pred)
-            axes[1, i].set_title(f'Adversarial\nPred: {adv_pred_name}')
+            adv_pred_name = (
+                class_names[adv_pred] if adv_pred < len(class_names) else str(adv_pred)
+            )
+            axes[1, i].set_title(f"Adversarial\nPred: {adv_pred_name}")
         else:
-            axes[1, i].set_title(f'Adversarial\nPred: {adv_pred}')
-        axes[1, i].axis('off')
+            axes[1, i].set_title(f"Adversarial\nPred: {adv_pred}")
+        axes[1, i].axis("off")
 
     plt.suptitle(title)
     plt.tight_layout()
 
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
         plt.close()
     else:
         plt.show()
 
 
 def plot_attack_progress(
-    accuracies: List[float],
-    fidelities: Optional[List[float]] = None,
+    accuracies: list[float],
+    fidelities: Optional[list[float]] = None,
     attack_name: str = "BIM",
     xlabel: str = "Iteration",
     title: str = "Attack Progress",
-    save_path: Optional[str] = None
+    save_path: Optional[str] = None,
 ):
     """Plot accuracy decay during iterative attack.
 
@@ -183,20 +192,20 @@ def plot_attack_progress(
     iterations = range(len(accuracies))
 
     # Accuracy plot
-    ax1.plot(iterations, accuracies, 'b-o', label=attack_name)
+    ax1.plot(iterations, accuracies, "b-o", label=attack_name)
     ax1.set_xlabel(xlabel)
-    ax1.set_ylabel('Accuracy')
-    ax1.set_title(f'{title} - Accuracy vs {xlabel}')
+    ax1.set_ylabel("Accuracy")
+    ax1.set_title(f"{title} - Accuracy vs {xlabel}")
     ax1.legend()
     ax1.grid(True, alpha=0.3)
     ax1.set_ylim(0, 1.05)
 
     # Fidelity plot
     if fidelities is not None:
-        ax2.plot(fidelities, accuracies, 'r-o', label=attack_name)
-        ax2.set_xlabel('Average Fidelity')
-        ax2.set_ylabel('Accuracy')
-        ax2.set_title(f'{title} - Accuracy vs Fidelity')
+        ax2.plot(fidelities, accuracies, "r-o", label=attack_name)
+        ax2.set_xlabel("Average Fidelity")
+        ax2.set_ylabel("Accuracy")
+        ax2.set_title(f"{title} - Accuracy vs Fidelity")
         ax2.legend()
         ax2.grid(True, alpha=0.3)
         ax2.set_xlim(0, 1.05)
@@ -205,16 +214,16 @@ def plot_attack_progress(
     plt.tight_layout()
 
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
         plt.close()
     else:
         plt.show()
 
 
 def plot_robustness_comparison(
-    results: Dict[str, Dict[float, float]],
+    results: dict[str, dict[float, float]],
     title: str = "Robustness to Different Attacks",
-    save_path: Optional[str] = None
+    save_path: Optional[str] = None,
 ):
     """Plot model robustness across different attacks and epsilon values.
 
@@ -230,10 +239,10 @@ def plot_robustness_comparison(
     for (attack_name, eps_dict), color in zip(results.items(), colors):
         epsilons = sorted(eps_dict.keys())
         accuracies = [eps_dict[e] for e in epsilons]
-        ax.plot(epsilons, accuracies, '-o', label=attack_name.upper(), color=color)
+        ax.plot(epsilons, accuracies, "-o", label=attack_name.upper(), color=color)
 
-    ax.set_xlabel('Epsilon (ε)')
-    ax.set_ylabel('Accuracy')
+    ax.set_xlabel("Epsilon (ε)")
+    ax.set_ylabel("Accuracy")
     ax.set_title(title)
     ax.legend()
     ax.grid(True, alpha=0.3)
@@ -242,16 +251,16 @@ def plot_robustness_comparison(
     plt.tight_layout()
 
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
         plt.close()
     else:
         plt.show()
 
 
 def plot_adversarial_training_progress(
-    history: Dict[str, List[float]],
+    history: dict[str, list[float]],
     title: str = "Adversarial Training Progress",
-    save_path: Optional[str] = None
+    save_path: Optional[str] = None,
 ):
     """Plot adversarial training progress.
 
@@ -268,21 +277,33 @@ def plot_adversarial_training_progress(
 
     # Plot training accuracy on clean samples
     if "train_acc" in history:
-        ax.plot(epochs, history["train_acc"], 'b-', label='Clean (train)', alpha=0.7)
+        ax.plot(epochs, history["train_acc"], "b-", label="Clean (train)", alpha=0.7)
 
     # Plot validation accuracy on clean samples
     if "test_acc" in history:
-        ax.plot(epochs, history["test_acc"], 'b--', label='Clean (val)', alpha=0.7)
+        ax.plot(epochs, history["test_acc"], "b--", label="Clean (val)", alpha=0.7)
 
     # Plot accuracy on adversarial samples
     if "test_adv_acc" in history:
-        ax.plot(epochs, history["test_adv_acc"], 'r-', label='Adversarial (test)', linewidth=2)
+        ax.plot(
+            epochs,
+            history["test_adv_acc"],
+            "r-",
+            label="Adversarial (test)",
+            linewidth=2,
+        )
 
     if "train_adv_acc" in history:
-        ax.plot(epochs, history["train_adv_acc"], 'r--', label='Adversarial (train)', alpha=0.7)
+        ax.plot(
+            epochs,
+            history["train_adv_acc"],
+            "r--",
+            label="Adversarial (train)",
+            alpha=0.7,
+        )
 
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('Accuracy')
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Accuracy")
     ax.set_title(title)
     ax.legend()
     ax.grid(True, alpha=0.3)
@@ -291,7 +312,7 @@ def plot_adversarial_training_progress(
     plt.tight_layout()
 
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
         plt.close()
     else:
         plt.show()
@@ -300,7 +321,7 @@ def plot_adversarial_training_progress(
 def plot_fidelity_distribution(
     fidelities: torch.Tensor,
     title: str = "Fidelity Distribution",
-    save_path: Optional[str] = None
+    save_path: Optional[str] = None,
 ):
     """Plot distribution of fidelities between clean and adversarial samples.
 
@@ -313,12 +334,13 @@ def plot_fidelity_distribution(
 
     fid_np = fidelities.cpu().numpy()
 
-    ax.hist(fid_np, bins=50, edgecolor='black', alpha=0.7)
-    ax.axvline(np.mean(fid_np), color='r', linestyle='--',
-               label=f'Mean: {np.mean(fid_np):.3f}')
+    ax.hist(fid_np, bins=50, edgecolor="black", alpha=0.7)
+    ax.axvline(
+        np.mean(fid_np), color="r", linestyle="--", label=f"Mean: {np.mean(fid_np):.3f}"
+    )
 
-    ax.set_xlabel('Fidelity')
-    ax.set_ylabel('Count')
+    ax.set_xlabel("Fidelity")
+    ax.set_ylabel("Count")
     ax.set_title(title)
     ax.legend()
     ax.grid(True, alpha=0.3)
@@ -326,18 +348,18 @@ def plot_fidelity_distribution(
     plt.tight_layout()
 
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
         plt.close()
     else:
         plt.show()
 
 
 def plot_noise_vs_adversarial(
-    results: Dict[str, Any] = None,
-    noise_results: Dict[float, float] = None,
-    adv_results: Dict[float, float] = None,
+    results: dict[str, Any] = None,
+    noise_results: dict[float, float] = None,
+    adv_results: dict[float, float] = None,
     title: str = "Random Noise vs Adversarial Perturbations",
-    save_path: Optional[str] = None
+    save_path: Optional[str] = None,
 ):
     """Compare effect of random noise vs adversarial perturbations.
 
@@ -363,57 +385,92 @@ def plot_noise_vs_adversarial(
         clean_acc = results.get("clean_accuracy", 1.0)
 
         # Plot clean accuracy baseline
-        ax.axhline(y=clean_acc, color='gray', linestyle='--', linewidth=2, 
-                   label=f'Clean ({clean_acc:.1%})', alpha=0.7)
+        ax.axhline(
+            y=clean_acc,
+            color="gray",
+            linestyle="--",
+            linewidth=2,
+            label=f"Clean ({clean_acc:.1%})",
+            alpha=0.7,
+        )
 
         # Adversarial
         if "adversarial" in results:
-            ax.plot(epsilon_values, results["adversarial"], 'ro-', linewidth=2, 
-                    markersize=8, label='Adversarial (BIM)')
+            ax.plot(
+                epsilon_values,
+                results["adversarial"],
+                "ro-",
+                linewidth=2,
+                markersize=8,
+                label="Adversarial (BIM)",
+            )
 
         # Random uniform noise
         if "random_uniform" in results:
-            ax.plot(epsilon_values, results["random_uniform"], 'bs--', linewidth=2, 
-                    markersize=8, label='Random Uniform', alpha=0.8)
+            ax.plot(
+                epsilon_values,
+                results["random_uniform"],
+                "bs--",
+                linewidth=2,
+                markersize=8,
+                label="Random Uniform",
+                alpha=0.8,
+            )
 
         # Random Gaussian noise
         if "random_gaussian" in results:
-            ax.plot(epsilon_values, results["random_gaussian"], 'g^--', linewidth=2, 
-                    markersize=8, label='Random Gaussian', alpha=0.8)
+            ax.plot(
+                epsilon_values,
+                results["random_gaussian"],
+                "g^--",
+                linewidth=2,
+                markersize=8,
+                label="Random Gaussian",
+                alpha=0.8,
+            )
 
         # Photon loss (photonic-specific)
         if "photon_loss" in results:
-            ax.plot(epsilon_values, results["photon_loss"], 'md-', linewidth=2, 
-                    markersize=8, label='Photon Loss', alpha=0.8)
+            ax.plot(
+                epsilon_values,
+                results["photon_loss"],
+                "md-",
+                linewidth=2,
+                markersize=8,
+                label="Photon Loss",
+                alpha=0.8,
+            )
 
-        ax.set_xlabel('Perturbation Magnitude (ε) / Loss Rate', fontsize=12)
+        ax.set_xlabel("Perturbation Magnitude (ε) / Loss Rate", fontsize=12)
 
     # Legacy format support
     elif noise_results is not None and adv_results is not None:
         # Random noise
         noise_strengths = sorted(noise_results.keys())
         noise_accs = [noise_results[n] for n in noise_strengths]
-        ax.plot(noise_strengths, noise_accs, 'b-o', label='Random Noise')
+        ax.plot(noise_strengths, noise_accs, "b-o", label="Random Noise")
 
         # Adversarial
         adv_epsilons = sorted(adv_results.keys())
         adv_accs = [adv_results[e] for e in adv_epsilons]
-        ax.plot(adv_epsilons, adv_accs, 'r-s', label='Adversarial (BIM)')
+        ax.plot(adv_epsilons, adv_accs, "r-s", label="Adversarial (BIM)")
 
-        ax.set_xlabel('Perturbation Strength')
+        ax.set_xlabel("Perturbation Strength")
     else:
-        raise ValueError("Provide either 'results' dict or both 'noise_results' and 'adv_results'")
+        raise ValueError(
+            "Provide either 'results' dict or both 'noise_results' and 'adv_results'"
+        )
 
-    ax.set_ylabel('Accuracy', fontsize=12)
+    ax.set_ylabel("Accuracy", fontsize=12)
     ax.set_title(title, fontsize=14)
-    ax.legend(loc='lower left', fontsize=10)
+    ax.legend(loc="lower left", fontsize=10)
     ax.grid(True, alpha=0.3)
     ax.set_ylim(0, 1.05)
 
     plt.tight_layout()
 
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
         logger.info(f"Saved figure to {save_path}")
         plt.close()
     else:

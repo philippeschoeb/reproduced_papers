@@ -8,12 +8,12 @@ Model architectures for the quantum adversarial learning experiments:
 - ClassicalBaseline: Classical MLP for comparison
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 import torch
 import torch.nn as nn
 
-from .circuits import MerLinQuantumClassifier, MerLinAmplitudeClassifier, ScaleLayer
+from .circuits import MerLinAmplitudeClassifier, MerLinQuantumClassifier
 
 
 class QuantumClassifier(nn.Module):
@@ -31,7 +31,7 @@ class QuantumClassifier(nn.Module):
         n_photons: int = 2,
         n_layers: int = 2,
         computation_space: str = "unbunched",
-        scale_type: str = "learned"
+        scale_type: str = "learned",
     ):
         """Initialize quantum classifier.
 
@@ -56,7 +56,7 @@ class QuantumClassifier(nn.Module):
             n_photons=n_photons,
             n_layers=n_layers,
             computation_space=computation_space,
-            scale_type=scale_type
+            scale_type=scale_type,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -75,11 +75,11 @@ class HybridQuantumClassifier(nn.Module):
         self,
         input_dim: int,
         n_outputs: int,
-        hidden_dims: List[int] = [128, 64],
+        hidden_dims: list[int] | None = None,
         n_modes: int = 8,
         n_photons: int = 2,
         n_layers: int = 2,
-        computation_space: str = "unbunched"
+        computation_space: str = "unbunched",
     ):
         """Initialize hybrid classifier.
 
@@ -94,6 +94,9 @@ class HybridQuantumClassifier(nn.Module):
         """
         super().__init__()
 
+        if hidden_dims is None:
+            hidden_dims = [128, 64]
+
         self.input_dim = input_dim
         self.n_outputs = n_outputs
 
@@ -101,17 +104,16 @@ class HybridQuantumClassifier(nn.Module):
         encoder_layers = []
         prev_dim = input_dim
         for hidden_dim in hidden_dims:
-            encoder_layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                nn.Tanh(),
-            ])
+            encoder_layers.extend(
+                [
+                    nn.Linear(prev_dim, hidden_dim),
+                    nn.Tanh(),
+                ]
+            )
             prev_dim = hidden_dim
 
         # Final projection to match quantum input
-        encoder_layers.extend([
-            nn.Linear(prev_dim, n_modes),
-            nn.Tanh()
-        ])
+        encoder_layers.extend([nn.Linear(prev_dim, n_modes), nn.Tanh()])
 
         self.encoder = nn.Sequential(*encoder_layers)
 
@@ -123,7 +125,7 @@ class HybridQuantumClassifier(nn.Module):
             n_photons=n_photons,
             n_layers=n_layers,
             computation_space=computation_space,
-            scale_type="pi"
+            scale_type="pi",
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -156,8 +158,8 @@ class ClassicalBaseline(nn.Module):
         self,
         input_dim: int,
         n_outputs: int,
-        hidden_dims: List[int] = [64, 32],
-        activation: str = "tanh"
+        hidden_dims: list[int] | None = None,
+        activation: str = "tanh",
     ):
         """Initialize classical baseline.
 
@@ -169,16 +171,16 @@ class ClassicalBaseline(nn.Module):
         """
         super().__init__()
 
+        if hidden_dims is None:
+            hidden_dims = [64, 32]
+
         activation_fn = nn.Tanh() if activation == "tanh" else nn.ReLU()
 
         layers = []
         prev_dim = input_dim
 
         for hidden_dim in hidden_dims:
-            layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                activation_fn
-            ])
+            layers.extend([nn.Linear(prev_dim, hidden_dim), activation_fn])
             prev_dim = hidden_dim
 
         layers.append(nn.Linear(prev_dim, n_outputs))
@@ -204,7 +206,7 @@ class ClassicalCNN(nn.Module):
         input_channels: int = 1,
         image_size: int = 16,
         n_outputs: int = 2,
-        n_filters: List[int] = [16, 32]
+        n_filters: list[int] | None = None,
     ):
         """Initialize CNN.
 
@@ -215,6 +217,9 @@ class ClassicalCNN(nn.Module):
             n_filters: Number of filters in each conv layer
         """
         super().__init__()
+
+        if n_filters is None:
+            n_filters = [16, 32]
 
         self.image_size = image_size
 
@@ -260,10 +265,7 @@ class ClassicalFNN(nn.Module):
     """
 
     def __init__(
-        self,
-        input_dim: int,
-        n_outputs: int,
-        hidden_dims: List[int] = [256, 128, 64]
+        self, input_dim: int, n_outputs: int, hidden_dims: list[int] | None = None
     ):
         """Initialize FNN.
 
@@ -274,15 +276,14 @@ class ClassicalFNN(nn.Module):
         """
         super().__init__()
 
+        if hidden_dims is None:
+            hidden_dims = [256, 128, 64]
+
         layers = []
         prev_dim = input_dim
 
         for hidden_dim in hidden_dims:
-            layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                nn.ReLU(),
-                nn.Dropout(0.2)
-            ])
+            layers.extend([nn.Linear(prev_dim, hidden_dim), nn.ReLU(), nn.Dropout(0.2)])
             prev_dim = hidden_dim
 
         layers.append(nn.Linear(prev_dim, n_outputs))
@@ -310,7 +311,7 @@ class IsingQuantumClassifier(nn.Module):
         n_modes: int = 8,
         n_photons: int = 2,
         n_layers: int = 2,
-        computation_space: str = "unbunched"
+        computation_space: str = "unbunched",
     ):
         """Initialize Ising classifier.
 
@@ -329,10 +330,7 @@ class IsingQuantumClassifier(nn.Module):
 
         # Dimensionality reduction (state_dim can be large: 2^8 = 256)
         self.encoder = nn.Sequential(
-            nn.Linear(state_dim, 64),
-            nn.Tanh(),
-            nn.Linear(64, n_modes),
-            nn.Tanh()
+            nn.Linear(state_dim, 64), nn.Tanh(), nn.Linear(64, n_modes), nn.Tanh()
         )
 
         # Quantum classifier
@@ -343,7 +341,7 @@ class IsingQuantumClassifier(nn.Module):
             n_photons=n_photons,
             n_layers=n_layers,
             computation_space=computation_space,
-            scale_type="pi"
+            scale_type="pi",
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -351,7 +349,7 @@ class IsingQuantumClassifier(nn.Module):
         return self.quantum_classifier(features)
 
 
-def create_model(config: Dict[str, Any]) -> nn.Module:
+def create_model(config: dict[str, Any]) -> nn.Module:
     """Factory function to create models from config.
 
     Args:
@@ -365,7 +363,7 @@ def create_model(config: Dict[str, Any]) -> nn.Module:
     # =========================================================================
     # Photonic (MerLin) Models
     # =========================================================================
-    
+
     # ANGLE ENCODING: Data encoded into phase shifter rotation angles
     if model_type in ("quantum", "angle_quantum", "angle_photonic"):
         return QuantumClassifier(
@@ -375,7 +373,7 @@ def create_model(config: Dict[str, Any]) -> nn.Module:
             n_photons=config.get("n_photons", 2),
             n_layers=config.get("n_layers", 2),
             computation_space=config.get("computation_space", "unbunched"),
-            scale_type=config.get("scale_type", "learned")
+            scale_type=config.get("scale_type", "learned"),
         )
 
     elif model_type in ("hybrid_quantum", "hybrid_photonic", "hybrid_angle"):
@@ -383,11 +381,23 @@ def create_model(config: Dict[str, Any]) -> nn.Module:
         return HybridQuantumClassifier(
             input_dim=config.get("input_dim", 256),
             n_outputs=config.get("n_outputs", 2),
-            hidden_dims=config.get("hidden_dims", [128, 64]),
+            hidden_dims=config.get("hidden_dims"),
             n_modes=config.get("n_modes", 8),
             n_photons=config.get("n_photons", 2),
             n_layers=config.get("n_layers", 2),
-            computation_space=config.get("computation_space", "unbunched")
+            computation_space=config.get("computation_space", "unbunched"),
+        )
+
+    # AMPLITUDE ENCODING: Data encoded into Fock state amplitudes
+    elif model_type in ("amplitude_quantum", "amplitude_photonic"):
+        return MerLinAmplitudeClassifier(
+            input_dim=config.get("input_dim", 256),
+            n_outputs=config.get("n_outputs", 2),
+            n_modes=config.get("n_modes", 4),
+            n_photons=config.get("n_photons", 3),
+            n_layers=config.get("n_layers", 2),
+            hidden_dims=config.get("hidden_dims"),
+            computation_space=config.get("computation_space", "unbunched"),
         )
 
     elif model_type == "ising_quantum":
@@ -397,74 +407,19 @@ def create_model(config: Dict[str, Any]) -> nn.Module:
             n_modes=config.get("n_modes", 8),
             n_photons=config.get("n_photons", 2),
             n_layers=config.get("n_layers", 2),
-            computation_space=config.get("computation_space", "unbunched")
-        )
-
-    # AMPLITUDE ENCODING: Data encoded into quantum state amplitudes (paper's approach)
-    elif model_type in ("amplitude_quantum", "amplitude_photonic"):
-        # Proper amplitude encoding as described in Lu et al. (2020)
-        return MerLinAmplitudeClassifier(
-            input_dim=config.get("input_dim", 256),
-            n_outputs=config.get("n_outputs", 2),
-            n_modes=config.get("n_modes", 8),
-            n_photons=config.get("n_photons", 2),
-            n_layers=config.get("n_layers", 2),
-            hidden_dims=config.get("hidden_dims", [128, 64]),
-            computation_space=config.get("computation_space", "unbunched")
-        )
-
-    elif model_type == "amplitude_direct":
-        # Direct amplitude encoding for quantum state inputs
-        from .circuits import MerLinAmplitudeClassifierDirect
-        return MerLinAmplitudeClassifierDirect(
-            state_dim=config.get("state_dim", 256),
-            n_outputs=config.get("n_outputs", 2),
-            n_modes=config.get("n_modes", 8),
-            n_photons=config.get("n_photons", 2),
-            n_layers=config.get("n_layers", 2)
+            computation_space=config.get("computation_space", "unbunched"),
         )
 
     # =========================================================================
-    # Gate-Based (PennyLane) Models
+    # Classical Baselines
     # =========================================================================
-    elif model_type == "gate_quantum" or model_type == "pennylane":
-        from .circuits import PennyLaneQuantumClassifier
-        return PennyLaneQuantumClassifier(
-            n_qubits=config.get("n_qubits", 8),
-            n_layers=config.get("n_layers", 2),
-            n_inputs=config.get("n_inputs", 8),
-            n_outputs=config.get("n_outputs", 2),
-            scale_type=config.get("scale_type", "learned")
-        )
 
-    elif model_type == "hybrid_gate" or model_type == "hybrid_pennylane":
-        from .circuits import PennyLaneHybridClassifier
-        return PennyLaneHybridClassifier(
-            input_dim=config.get("input_dim", 256),
-            n_outputs=config.get("n_outputs", 2),
-            hidden_dims=config.get("hidden_dims", [128, 64]),
-            n_qubits=config.get("n_qubits", 8),
-            n_layers=config.get("n_layers", 2)
-        )
-
-    elif model_type == "simple_gate" or model_type == "simple_pennylane":
-        from .circuits import PennyLaneSimpleClassifier
-        return PennyLaneSimpleClassifier(
-            n_inputs=config.get("n_inputs", 8),
-            n_outputs=config.get("n_outputs", 2),
-            n_layers=config.get("n_layers", 2),
-            scale_type=config.get("scale_type", "pi")
-        )
-
-    # =========================================================================
-    # Classical Models
-    # =========================================================================
     elif model_type == "classical":
         return ClassicalBaseline(
             input_dim=config.get("input_dim", 256),
             n_outputs=config.get("n_outputs", 2),
-            hidden_dims=config.get("hidden_dims", [64, 32]),
-            activation=config.get("activation", "tanh")
+            hidden_dims=config.get("hidden_dims"),
+            activation=config.get("activation", "tanh"),
         )
 
     elif model_type == "cnn":
@@ -472,14 +427,14 @@ def create_model(config: Dict[str, Any]) -> nn.Module:
             input_channels=config.get("input_channels", 1),
             image_size=config.get("image_size", 16),
             n_outputs=config.get("n_outputs", 2),
-            n_filters=config.get("n_filters", [16, 32])
+            n_filters=config.get("n_filters"),
         )
 
     elif model_type == "fnn":
         return ClassicalFNN(
             input_dim=config.get("input_dim", 256),
             n_outputs=config.get("n_outputs", 2),
-            hidden_dims=config.get("hidden_dims", [256, 128, 64])
+            hidden_dims=config.get("hidden_dims"),
         )
 
     else:

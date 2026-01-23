@@ -3,7 +3,6 @@
   "seed": 42,
   "experiment": "attack",
   "device": "auto",
-  
   "dataset": {
     "name": "qah",
     "grid_size": 4,
@@ -11,17 +10,18 @@
     "n_test": 500,
     "batch_size": 256
   },
-  
   "model": {
     "type": "amplitude_quantum",
     "input_dim": 16,
     "n_outputs": 2,
-    "hidden_dims": [32, 16],
+    "hidden_dims": [
+      32,
+      16
+    ],
     "n_modes": 4,
     "n_photons": 2,
     "n_layers": 2
   },
-  
   "attack": {
     "method": "bim",
     "epsilon": 0.05,
@@ -29,8 +29,7 @@
     "alpha": 0.01,
     "max_samples": 500
   },
-  
   "options": {
-    "load_model": "outdir/topological/model.pt"
+    "load_model": "results/topological/model.pt"
   }
 }

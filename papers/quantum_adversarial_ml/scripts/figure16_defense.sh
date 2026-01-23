@@ -18,9 +18,9 @@ echo ""
 echo "Training with adversarial examples..."
 python "$REPO_ROOT/implementation.py" --paper quantum_adversarial_ml \
     --config configs/adversarial_training.json \
-    --outdir outdir/defense
+    --outdir results/defense
 
 echo ""
 echo "=== Figure 16 Complete ==="
-echo "Results saved in outdir/defense/"
+echo "Results saved in results/defense/"
 echo "Output includes training curves showing clean and adversarial accuracy"

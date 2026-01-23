@@ -19,15 +19,15 @@ echo "Paper: Quantum Adversarial Machine Learning (Lu et al., 2020)"
 echo ""
 
 # Step 1: Train the quantum classifier (if not already trained)
-MODEL_PATH="outdir/train_quantum/model.pt"
+MODEL_PATH="results/train_quantum/model.pt"
 if [ ! -f "$MODEL_PATH" ]; then
     echo "Step 1: Training quantum classifier..."
     python "$REPO_ROOT/implementation.py" --paper quantum_adversarial_ml \
         --config configs/train_quantum.json \
-        --outdir outdir/train_quantum
+        --outdir results/train_quantum
     
-    MODEL_PATH=$(find outdir/train_quantum -name "model.pt" | head -1)
-    ln -sf "$(basename $(dirname $MODEL_PATH))/model.pt" outdir/train_quantum/model.pt 2>/dev/null || true
+    MODEL_PATH=$(find results/train_quantum -name "model.pt" | head -1)
+    ln -sf "$(basename $(dirname $MODEL_PATH))/model.pt" results/train_quantum/model.pt 2>/dev/null || true
 else
     echo "Step 1: Skipping training (model exists)"
 fi
@@ -37,11 +37,11 @@ echo ""
 echo "Step 2: Running noise comparison experiment..."
 python "$REPO_ROOT/implementation.py" --paper quantum_adversarial_ml \
     --config configs/noise_comparison.json \
-    --outdir outdir/noise_comparison
+    --outdir results/noise_comparison
 
 echo ""
 echo "=== Figure 11 Complete ==="
-echo "Results saved in outdir/noise_comparison/"
+echo "Results saved in results/noise_comparison/"
 echo ""
 echo "The experiment compares:"
 echo "  - Adversarial perturbations (BIM attack)"

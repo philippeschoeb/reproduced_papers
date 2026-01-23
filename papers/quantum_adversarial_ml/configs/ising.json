@@ -3,14 +3,15 @@
   "seed": 42,
   "experiment": "ising",
   "device": "auto",
-  
   "dataset": {
     "n_spins": 8,
     "n_samples": 2000,
-    "jx_range": [0.0, 2.0],
+    "jx_range": [
+      0.0,
+      2.0
+    ],
     "batch_size": 64
   },
-  
   "model": {
     "type": "amplitude_quantum",
     "input_dim": 256,
@@ -20,29 +21,29 @@
     "n_layers": 2,
     "computation_space": "unbunched"
   },
-  
   "training": {
     "epochs": 100,
     "batch_size": 64,
     "learning_rate": 0.005,
     "optimizer": "adam"
   },
-  
   "attack": {
     "method": "bim",
     "epsilon": 0.05,
     "num_iter": 10,
     "alpha": 0.01,
-    "epsilon_range": [0.01, 0.03, 0.05, 0.1]
+    "epsilon_range": [
+      0.01,
+      0.03,
+      0.05,
+      0.1
+    ]
   },
-  
   "options": {
-    "generate_figures": true,
     "save_model": true,
     "run_attack": true,
     "evaluate_robustness": true
   },
-  
   "logging": {
     "level": "info"
   }

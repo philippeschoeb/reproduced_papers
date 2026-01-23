@@ -3,24 +3,27 @@
   "seed": 42,
   "experiment": "attack",
   "device": "auto",
-  
   "dataset": {
-    "digits": [1, 9],
+    "digits": [
+      1,
+      9
+    ],
     "image_size": 16,
     "normalize": true,
     "batch_size": 256
   },
-  
   "model": {
     "type": "amplitude_quantum",
     "input_dim": 256,
     "n_outputs": 2,
-    "hidden_dims": [128, 64],
+    "hidden_dims": [
+      128,
+      64
+    ],
     "n_modes": 8,
     "n_photons": 2,
     "n_layers": 2
   },
-  
   "attack": {
     "method": "bim",
     "epsilon": 0.05,
@@ -28,8 +31,7 @@
     "alpha": 0.01,
     "max_samples": 1000
   },
-  
   "options": {
-    "load_model": "outdir/train_quantum/model.pt"
+    "load_model": "results/train_quantum/model.pt"
   }
 }

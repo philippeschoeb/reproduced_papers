@@ -31,36 +31,36 @@ echo "[1/4] Training classifiers..."
 echo ""
 
 # Train AMPLITUDE model (no compression)
-if [ -f "outdir/train_quantum/model.pt" ]; then
+if [ -f "results/train_quantum/model.pt" ]; then
     echo "--- AMPLITUDE model already exists, skipping training ---"
 else
     echo "--- Training AMPLITUDE model (no compression) ---"
     python ../../implementation.py --paper quantum_adversarial_ml \
         --config configs/defaults.json \
         --config configs/train_quantum.json \
-        --outdir outdir/train_quantum
+        --outdir results/train_quantum
 fi
 
 # Train AMPLITUDE+COMPRESSION model
-if [ -f "outdir/train_amplitude_compressed/model.pt" ]; then
+if [ -f "results/train_amplitude_compressed/model.pt" ]; then
     echo "--- AMPLITUDE+COMPRESSION model already exists, skipping training ---"
 else
     echo "--- Training AMPLITUDE+COMPRESSION model ---"
     python ../../implementation.py --paper quantum_adversarial_ml \
         --config configs/defaults.json \
         --config configs/train_amplitude_compressed.json \
-        --outdir outdir/train_amplitude_compressed
+        --outdir results/train_amplitude_compressed
 fi
 
 # Train ANGLE model
-if [ -f "outdir/train_angle/model.pt" ]; then
+if [ -f "results/train_angle/model.pt" ]; then
     echo "--- ANGLE model already exists, skipping training ---"
 else
     echo "--- Training ANGLE model ---"
     python ../../implementation.py --paper quantum_adversarial_ml \
         --config configs/defaults.json \
         --config configs/train_angle.json \
-        --outdir outdir/train_angle
+        --outdir results/train_angle
 fi
 
 echo ""
@@ -75,19 +75,19 @@ echo "--- Attacking AMPLITUDE model ---"
 python ../../implementation.py --paper quantum_adversarial_ml \
     --config configs/defaults.json \
     --config configs/attack_bim_eps005.json \
-    --outdir outdir/attack_amplitude_eps005
+    --outdir results/attack_amplitude_eps005
 
 echo "--- Attacking AMPLITUDE+COMPRESSION model ---"
 python ../../implementation.py --paper quantum_adversarial_ml \
     --config configs/defaults.json \
     --config configs/attack_ampcomp_eps005.json \
-    --outdir outdir/attack_ampcomp_eps005
+    --outdir results/attack_ampcomp_eps005
 
 echo "--- Attacking ANGLE model ---"
 python ../../implementation.py --paper quantum_adversarial_ml \
     --config configs/defaults.json \
     --config configs/attack_angle_eps005.json \
-    --outdir outdir/attack_angle_eps005
+    --outdir results/attack_angle_eps005
 
 echo ""
 
@@ -101,19 +101,19 @@ echo "--- Attacking AMPLITUDE model ---"
 python ../../implementation.py --paper quantum_adversarial_ml \
     --config configs/defaults.json \
     --config configs/attack_bim_eps010.json \
-    --outdir outdir/attack_amplitude_eps010
+    --outdir results/attack_amplitude_eps010
 
 echo "--- Attacking AMPLITUDE+COMPRESSION model ---"
 python ../../implementation.py --paper quantum_adversarial_ml \
     --config configs/defaults.json \
     --config configs/attack_ampcomp_eps010.json \
-    --outdir outdir/attack_ampcomp_eps010
+    --outdir results/attack_ampcomp_eps010
 
 echo "--- Attacking ANGLE model ---"
 python ../../implementation.py --paper quantum_adversarial_ml \
     --config configs/defaults.json \
     --config configs/attack_angle_eps010.json \
-    --outdir outdir/attack_angle_eps010
+    --outdir results/attack_angle_eps010
 
 echo ""
 
@@ -127,19 +127,19 @@ echo "--- AMPLITUDE noise comparison ---"
 python ../../implementation.py --paper quantum_adversarial_ml \
     --config configs/defaults.json \
     --config configs/noise_comparison.json \
-    --outdir outdir/noise_amplitude
+    --outdir results/noise_amplitude
 
 echo "--- AMPLITUDE+COMPRESSION noise comparison ---"
 python ../../implementation.py --paper quantum_adversarial_ml \
     --config configs/defaults.json \
     --config configs/noise_comparison_ampcomp.json \
-    --outdir outdir/noise_ampcomp
+    --outdir results/noise_ampcomp
 
 echo "--- ANGLE noise comparison ---"
 python ../../implementation.py --paper quantum_adversarial_ml \
     --config configs/defaults.json \
     --config configs/noise_comparison_angle.json \
-    --outdir outdir/noise_angle
+    --outdir results/noise_angle
 
 echo ""
 
@@ -187,24 +187,24 @@ def get_accuracy(data, *keys):
 results = {
     'amplitude': {
         'name': 'AMPLITUDE (no compress)',
-        'train': find_latest_result('outdir/train_quantum/*/summary_results.json'),
-        'attack_005': find_latest_result('outdir/attack_amplitude_eps005/*/summary_results.json'),
-        'attack_010': find_latest_result('outdir/attack_amplitude_eps010/*/summary_results.json'),
-        'noise': find_latest_result('outdir/noise_amplitude/*/noise_comparison_results.json'),
+        'train': find_latest_result('results/train_quantum/*/summary_results.json'),
+        'attack_005': find_latest_result('results/attack_amplitude_eps005/*/summary_results.json'),
+        'attack_010': find_latest_result('results/attack_amplitude_eps010/*/summary_results.json'),
+        'noise': find_latest_result('results/noise_amplitude/*/noise_comparison_results.json'),
     },
     'ampcomp': {
         'name': 'AMPLITUDE+COMPRESS',
-        'train': find_latest_result('outdir/train_amplitude_compressed/*/summary_results.json'),
-        'attack_005': find_latest_result('outdir/attack_ampcomp_eps005/*/summary_results.json'),
-        'attack_010': find_latest_result('outdir/attack_ampcomp_eps010/*/summary_results.json'),
-        'noise': find_latest_result('outdir/noise_ampcomp/*/noise_comparison_results.json'),
+        'train': find_latest_result('results/train_amplitude_compressed/*/summary_results.json'),
+        'attack_005': find_latest_result('results/attack_ampcomp_eps005/*/summary_results.json'),
+        'attack_010': find_latest_result('results/attack_ampcomp_eps010/*/summary_results.json'),
+        'noise': find_latest_result('results/noise_ampcomp/*/noise_comparison_results.json'),
     },
     'angle': {
         'name': 'ANGLE',
-        'train': find_latest_result('outdir/train_angle/*/summary_results.json'),
-        'attack_005': find_latest_result('outdir/attack_angle_eps005/*/summary_results.json'),
-        'attack_010': find_latest_result('outdir/attack_angle_eps010/*/summary_results.json'),
-        'noise': find_latest_result('outdir/noise_angle/*/noise_comparison_results.json'),
+        'train': find_latest_result('results/train_angle/*/summary_results.json'),
+        'attack_005': find_latest_result('results/attack_angle_eps005/*/summary_results.json'),
+        'attack_010': find_latest_result('results/attack_angle_eps010/*/summary_results.json'),
+        'noise': find_latest_result('results/noise_angle/*/noise_comparison_results.json'),
     }
 }
 
@@ -362,10 +362,10 @@ summary = {
     } for k, v in metrics.items()},
 }
 
-with open('outdir/encoding_comparison_summary.json', 'w') as f:
+with open('results/encoding_comparison_summary.json', 'w') as f:
     json.dump(summary, f, indent=2)
 
-print("Full results saved to: outdir/encoding_comparison_summary.json")
+print("Full results saved to: results/encoding_comparison_summary.json")
 PYTHON_SCRIPT
 
 echo ""

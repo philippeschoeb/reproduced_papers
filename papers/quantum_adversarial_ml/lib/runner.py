@@ -20,7 +20,7 @@ import logging
 import random
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import numpy as np
 import torch
@@ -37,13 +37,6 @@ from .datasets import create_dataloaders
 from .defense import AdversarialTrainer, evaluate_robustness
 from .models import create_model
 from .training import train_model
-from .visualization import (
-    plot_adversarial_examples,
-    plot_adversarial_training_progress,
-    plot_attack_progress,
-    plot_robustness_comparison,
-    plot_training_curves,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -62,59 +55,59 @@ def set_seed(seed: int):
 
 def find_model_path(load_path: str) -> Optional[str]:
     """Find the actual model path, checking run subdirectories if needed.
-    
+
     Models are saved in timestamped run directories like:
-        outdir/train_quantum/run_20260120-123456/model.pt
-    
+        results/train_quantum/run_20260120-123456/model.pt
+
     But configs typically specify:
-        outdir/train_quantum/model.pt
-    
+        results/train_quantum/model.pt
+
     This function searches for the model in:
     1. The exact path specified
     2. The latest run_* subdirectory
-    
+
     Args:
         load_path: Configured path to model (may or may not exist)
-        
+
     Returns:
         Actual path to model.pt, or None if not found
     """
     if load_path is None:
         return None
-        
+
     path = Path(load_path)
-    
+
     # Check if exact path exists
     if path.exists():
         return str(path)
-    
+
     # Check parent directory for run_* subdirectories
     parent = path.parent
     model_name = path.name  # usually "model.pt"
-    
+
     if parent.exists():
         # Find all run_* directories
-        run_dirs = sorted(parent.glob("run_*"), key=lambda p: p.stat().st_mtime, reverse=True)
-        
+        run_dirs = sorted(
+            parent.glob("run_*"), key=lambda p: p.stat().st_mtime, reverse=True
+        )
+
         for run_dir in run_dirs:
             candidate = run_dir / model_name
             if candidate.exists():
                 logger.info(f"Found model in run directory: {candidate}")
                 return str(candidate)
-    
+
     # Also check if the parent itself contains the model (for direct saves)
     direct_model = parent / model_name
     if direct_model.exists():
         return str(direct_model)
-    
+
     logger.warning(f"Model not found at {load_path} or in run subdirectories")
     return None
 
 
 def load_model(
-    model_path: str,
-    model_config: Dict[str, Any],
-    device: torch.device
+    model_path: str, model_config: dict[str, Any], device: torch.device
 ) -> nn.Module:
     """Load a pre-trained model from disk.
 
@@ -159,15 +152,15 @@ def setup_logging(level: str = "info"):
         "debug": logging.DEBUG,
         "info": logging.INFO,
         "warning": logging.WARNING,
-        "error": logging.ERROR
+        "error": logging.ERROR,
     }
     logging.basicConfig(
         level=level_map.get(level.lower(), logging.INFO),
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
 
-def create_run_dir(base_dir: str = "outdir") -> Path:
+def create_run_dir(base_dir: str = "results") -> Path:
     """Create timestamped run directory."""
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = Path(base_dir) / f"run_{timestamp}"
@@ -175,7 +168,7 @@ def create_run_dir(base_dir: str = "outdir") -> Path:
     return run_dir
 
 
-def get_device(config: Dict[str, Any]) -> torch.device:
+def get_device(config: dict[str, Any]) -> torch.device:
     """Get torch device."""
     device_str = config.get("device", None)
 
@@ -197,10 +190,8 @@ def get_device(config: Dict[str, Any]) -> torch.device:
 
 
 def run_mnist_experiment(
-    config: Dict[str, Any],
-    run_dir: Path,
-    device: torch.device
-) -> Dict[str, Any]:
+    config: dict[str, Any], run_dir: Path, device: torch.device
+) -> dict[str, Any]:
     """Run MNIST classification experiment.
 
     Reproduces Examples 1 (binary) and Figure 4-5 from the paper.
@@ -223,7 +214,7 @@ def run_mnist_experiment(
     train_loader, test_loader = create_dataloaders(
         dataset_name,
         {**dataset_config, "batch_size": training_config.get("batch_size", 256)},
-        seed=config.get("seed", 42)
+        seed=config.get("seed", 42),
     )
 
     # Determine input dimension
@@ -239,18 +230,14 @@ def run_mnist_experiment(
 
     # Train
     results = train_model(
-        model, train_loader, test_loader,
-        training_config, device,
-        save_path=str(run_dir / "model.pt") if options.get("save_model") else None
+        model,
+        train_loader,
+        test_loader,
+        training_config,
+        device,
+        save_path=str(run_dir / "model.pt") if options.get("save_model") else None,
     )
 
-    # Generate figures
-    if options.get("generate_figures", True):
-        plot_training_curves(
-            results["history"],
-            title=f"MNIST {n_classes}-class Classification",
-            save_path=str(run_dir / "training_curves.png")
-        )
 
     logger.info(f"Best accuracy: {results['best_accuracy']:.3f}")
 
@@ -258,12 +245,12 @@ def run_mnist_experiment(
 
 
 def run_attack_experiment(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     run_dir: Path,
     device: torch.device,
     model: torch.nn.Module = None,
-    test_loader = None
-) -> Dict[str, Any]:
+    test_loader=None,
+) -> dict[str, Any]:
     """Run adversarial attack experiment (single run).
 
     Evaluates one attack method at one epsilon value.
@@ -314,9 +301,14 @@ def run_attack_experiment(
 
     # Generate adversarial examples
     clean_samples, clean_labels, adv_samples, adv_preds = generate_adversarial_examples(
-        model, test_loader, attack_method,
-        epsilon=epsilon, num_iter=num_iter, alpha=alpha,
-        device=device, max_samples=attack_config.get("max_samples", 1000)
+        model,
+        test_loader,
+        attack_method,
+        epsilon=epsilon,
+        num_iter=num_iter,
+        alpha=alpha,
+        device=device,
+        max_samples=attack_config.get("max_samples", 1000),
     )
 
     # Get clean predictions
@@ -344,54 +336,26 @@ def run_attack_experiment(
         "average_fidelity": avg_fidelity,
     }
 
-    # Generate figures
-    if options.get("generate_figures", True):
-        # Plot adversarial examples
-        # Try to infer image size from data or config
-        image_size = dataset_config.get("image_size")
-        if image_size is not None:
-            image_size = (image_size, image_size)
-        # If not set, plot_adversarial_examples will infer from data
-        
-        digits = dataset_config.get("digits", [0, 1])
-        class_names = [str(d) for d in digits] if digits else None
-
-        plot_adversarial_examples(
-            clean_samples[:4], adv_samples[:4],
-            clean_labels[:4], adv_preds[:4], clean_preds[:4],
-            image_size=image_size,
-            class_names=class_names,
-            title=f"{attack_method.upper()} Attack (ε={epsilon})",
-            save_path=str(run_dir / "adversarial_examples.png")
-        )
-
     # Evaluate robustness across epsilons
     if options.get("evaluate_robustness", True):
         epsilons = attack_config.get("epsilon_range", [0.01, 0.05, 0.1, 0.2])
         robustness = evaluate_robustness(
-            model, test_loader,
+            model,
+            test_loader,
             attack_methods=[attack_method],
             epsilons=epsilons,
             num_iter=num_iter,
-            device=device
+            device=device,
         )
         results["robustness"] = robustness
 
-        if options.get("generate_figures", True):
-            plot_robustness_comparison(
-                robustness,
-                title="Model Robustness",
-                save_path=str(run_dir / "robustness.png")
-            )
 
     return results
 
 
 def run_defense_experiment(
-    config: Dict[str, Any],
-    run_dir: Path,
-    device: torch.device
-) -> Dict[str, Any]:
+    config: dict[str, Any], run_dir: Path, device: torch.device
+) -> dict[str, Any]:
     """Run adversarial training defense experiment.
 
     Reproduces Figure 16 from the paper.
@@ -401,7 +365,6 @@ def run_defense_experiment(
     dataset_config = config.get("dataset", {})
     model_config = config.get("model", {})
     defense_config = config.get("defense", {})
-    options = config.get("options", {})
 
     # Create dataloaders
     digits = dataset_config.get("digits", [1, 9])
@@ -426,24 +389,17 @@ def run_defense_experiment(
     results = trainer.train(epochs=epochs, verbose=True, eval_attack=True)
 
     logger.info(f"Final clean accuracy: {results['final_clean_accuracy']:.3f}")
-    logger.info(f"Final adversarial accuracy: {results['final_adversarial_accuracy']:.3f}")
+    logger.info(
+        f"Final adversarial accuracy: {results['final_adversarial_accuracy']:.3f}"
+    )
 
-    # Generate figures
-    if options.get("generate_figures", True):
-        plot_adversarial_training_progress(
-            results["history"],
-            title="Adversarial Training Progress",
-            save_path=str(run_dir / "adversarial_training.png")
-        )
 
     return results
 
 
 def run_ising_experiment(
-    config: Dict[str, Any],
-    run_dir: Path,
-    device: torch.device
-) -> Dict[str, Any]:
+    config: dict[str, Any], run_dir: Path, device: torch.device
+) -> dict[str, Any]:
     """Run Ising model phase classification experiment.
 
     Reproduces Section III.D from the paper.
@@ -462,7 +418,7 @@ def run_ising_experiment(
 
     # Create model
     n_spins = dataset_config.get("n_spins", 8)
-    state_dim = 2 ** n_spins
+    state_dim = 2**n_spins
     model_config["type"] = "ising_quantum"
     model_config["state_dim"] = state_dim
     model_config["n_outputs"] = 2
@@ -471,18 +427,16 @@ def run_ising_experiment(
 
     # Train
     results = train_model(
-        model, train_loader, test_loader,
-        training_config, device,
-        save_path=str(run_dir / "ising_model.pt") if options.get("save_model") else None
+        model,
+        train_loader,
+        test_loader,
+        training_config,
+        device,
+        save_path=str(run_dir / "ising_model.pt")
+        if options.get("save_model")
+        else None,
     )
 
-    # Generate figures
-    if options.get("generate_figures", True):
-        plot_training_curves(
-            results["history"],
-            title="Ising Model Phase Classification",
-            save_path=str(run_dir / "ising_training.png")
-        )
 
     logger.info(f"Best accuracy: {results['best_accuracy']:.3f}")
 
@@ -490,10 +444,8 @@ def run_ising_experiment(
 
 
 def run_topological_experiment(
-    config: Dict[str, Any],
-    run_dir: Path,
-    device: torch.device
-) -> Dict[str, Any]:
+    config: dict[str, Any], run_dir: Path, device: torch.device
+) -> dict[str, Any]:
     """Run QAH topological phase classification experiment.
 
     Reproduces Section III.C from the paper - "Quantum adversarial
@@ -528,18 +480,16 @@ def run_topological_experiment(
 
     # Train
     results = train_model(
-        model, train_loader, test_loader,
-        training_config, device,
-        save_path=str(run_dir / "topological_model.pt") if options.get("save_model") else None
+        model,
+        train_loader,
+        test_loader,
+        training_config,
+        device,
+        save_path=str(run_dir / "topological_model.pt")
+        if options.get("save_model")
+        else None,
     )
 
-    # Generate figures
-    if options.get("generate_figures", True):
-        plot_training_curves(
-            results["history"],
-            title="QAH Topological Phase Classification",
-            save_path=str(run_dir / "topological_training.png")
-        )
 
     logger.info(f"Best accuracy: {results['best_accuracy']:.3f}")
 
@@ -547,10 +497,8 @@ def run_topological_experiment(
 
 
 def run_transfer_experiment(
-    config: Dict[str, Any],
-    run_dir: Path,
-    device: torch.device
-) -> Dict[str, Any]:
+    config: dict[str, Any], run_dir: Path, device: torch.device
+) -> dict[str, Any]:
     """Run black-box transfer attack experiment.
 
     Reproduces Section III.B.3 "Black-box attack: transferability"
@@ -581,11 +529,11 @@ def run_transfer_experiment(
 
     # Load or create quantum model (target)
     target_model_path = options.get("target_model")
-    
+
     if target_model_path and Path(target_model_path).exists():
         # Load pre-trained amplitude-encoded quantum model
         logger.info(f"Loading pre-trained quantum model from {target_model_path}")
-        
+
         # Use amplitude_quantum config (same as train_quantum.json)
         quantum_config = {
             "type": "amplitude_quantum",
@@ -597,9 +545,11 @@ def run_transfer_experiment(
             "n_layers": model_config.get("n_layers", 2),
         }
         quantum_model = create_model(quantum_config).to(device)
-        quantum_model.load_state_dict(torch.load(target_model_path, map_location=device, weights_only=True))
+        quantum_model.load_state_dict(
+            torch.load(target_model_path, map_location=device, weights_only=True)
+        )
         quantum_model.eval()
-        
+
         train_results = {"loaded_from": str(target_model_path)}
     else:
         # Train new quantum model if no pre-trained model available
@@ -609,18 +559,19 @@ def run_transfer_experiment(
         # Default to amplitude encoding for transfer experiments
         if model_config.get("type") in ("hybrid_quantum", "hybrid_photonic"):
             model_config["type"] = "amplitude_quantum"
-        
+
         quantum_model = create_model(model_config).to(device)
         train_results = train_model(
-            quantum_model, train_loader, test_loader,
-            training_config, device
+            quantum_model, train_loader, test_loader, training_config, device
         )
 
     # Run transfer attacks with CNN and FNN surrogates
     all_results = {"quantum_training": train_results}
 
     for surrogate_type in transfer_config.get("surrogate_types", ["cnn", "fnn"]):
-        logger.info(f"\n--- Transfer attack with {surrogate_type.upper()} surrogate ---")
+        logger.info(
+            f"\n--- Transfer attack with {surrogate_type.upper()} surrogate ---"
+        )
 
         transfer_results = run_transfer_attack_experiment(
             quantum_model=quantum_model,
@@ -630,11 +581,13 @@ def run_transfer_experiment(
             input_dim=input_dim,
             image_size=image_size,
             n_outputs=n_outputs,
-            attack_methods=transfer_config.get("attack_methods", ["bim", "fgsm", "mim"]),
+            attack_methods=transfer_config.get(
+                "attack_methods", ["bim", "fgsm", "mim"]
+            ),
             epsilon=transfer_config.get("epsilon", 0.1),
             num_iter=transfer_config.get("num_iter", 10),
             epochs=transfer_config.get("surrogate_epochs", 20),
-            device=device
+            device=device,
         )
 
         all_results[surrogate_type] = transfer_results
@@ -645,7 +598,7 @@ def run_transfer_experiment(
     return all_results
 
 
-def _save_transfer_results_table(results: Dict[str, Any], run_dir: Path):
+def _save_transfer_results_table(results: dict[str, Any], run_dir: Path):
     """Save transfer attack results as a formatted table."""
     lines = [
         "Black-box Transfer Attack Results",
@@ -654,7 +607,7 @@ def _save_transfer_results_table(results: Dict[str, Any], run_dir: Path):
         "Reproduces Table III from Lu et al. (2020)",
         "",
         f"{'Attack':<15} {'α_C^adv':<10} {'α_C - α_C^adv':<15} {'α_Q^adv':<10} {'α_Q - α_Q^adv':<15}",
-        "-" * 65
+        "-" * 65,
     ]
 
     for surrogate_type in ["cnn", "fnn"]:
@@ -673,8 +626,8 @@ def _save_transfer_results_table(results: Dict[str, Any], run_dir: Path):
             aq_drop = attack_results["accuracy_drop_target"]
 
             lines.append(
-                f"{attack_name.upper():<15} {ac_adv*100:<10.1f} {ac_drop*100:<15.1f} "
-                f"{aq_adv*100:<10.1f} {aq_drop*100:<15.1f}"
+                f"{attack_name.upper():<15} {ac_adv * 100:<10.1f} {ac_drop * 100:<15.1f} "
+                f"{aq_adv * 100:<10.1f} {aq_drop * 100:<15.1f}"
             )
 
     with open(run_dir / "transfer_results.txt", "w") as f:
@@ -684,12 +637,12 @@ def _save_transfer_results_table(results: Dict[str, Any], run_dir: Path):
 
 
 def run_noise_experiment(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     run_dir: Path,
     device: torch.device,
     model: nn.Module = None,
-    test_loader: torch.utils.data.DataLoader = None
-) -> Dict[str, Any]:
+    test_loader: torch.utils.data.DataLoader = None,
+) -> dict[str, Any]:
     """Run noise vs adversarial comparison experiment.
 
     NOTE: This runs a full sweep over multiple epsilon values.
@@ -711,7 +664,6 @@ def run_noise_experiment(
         Comparison results
     """
     from .attacks import run_noise_comparison_experiment
-    from .visualization import plot_noise_vs_adversarial
 
     logger.info("Running Noise vs Adversarial Comparison Experiment")
     logger.info("Reproduces Figure 11 from Lu et al. (2020)")
@@ -745,26 +697,17 @@ def run_noise_experiment(
             model = create_model(model_config).to(device)
             logger.info("Training quantum classifier...")
             from .training import train_model
+
             train_model(model, train_loader, test_loader, training_config, device)
 
     # Run noise comparison
     results = run_noise_comparison_experiment(
-        model=model,
-        test_loader=test_loader,
-        config=config,
-        device=device
+        model=model, test_loader=test_loader, config=config, device=device
     )
-
-    # Generate figure
-    if options.get("generate_figures", True):
-        plot_noise_vs_adversarial(
-            results=results,
-            title="Adversarial vs Random Noise vs Photon Loss",
-            save_path=str(run_dir / "noise_vs_adversarial.png")
-        )
 
     # Save results
     import json
+
     results_serializable = {
         k: v if not isinstance(v, list) else [float(x) for x in v]
         for k, v in results.items()
@@ -776,10 +719,8 @@ def run_noise_experiment(
 
 
 def run_noise_eval(
-    config: Dict[str, Any],
-    run_dir: Path,
-    device: torch.device
-) -> Dict[str, Any]:
+    config: dict[str, Any], run_dir: Path, device: torch.device
+) -> dict[str, Any]:
     """Evaluate model with ONE noise type at ONE level (single run).
 
     Use this for shell script orchestration of Figure 11.
@@ -793,7 +734,6 @@ def run_noise_eval(
         Single evaluation result
     """
     from .attacks import add_random_noise, evaluate_with_photon_loss
-    from .training import evaluate
 
     logger.info("Running Single Noise Evaluation")
 
@@ -826,8 +766,10 @@ def run_noise_eval(
 
     actual_path = find_model_path(load_path)
     if not actual_path:
-        raise FileNotFoundError(f"Model not found at {load_path} or in run subdirectories")
-    
+        raise FileNotFoundError(
+            f"Model not found at {load_path} or in run subdirectories"
+        )
+
     model = load_model(actual_path, model_config, device)
     model.eval()
 
@@ -846,9 +788,15 @@ def run_noise_eval(
                 preds = outputs.argmax(dim=1)
                 correct += (preds == labels).sum().item()
                 total += labels.size(0)
-        results = {"accuracy": correct / total, "epsilon": epsilon, "noise_type": noise_type}
+        results = {
+            "accuracy": correct / total,
+            "epsilon": epsilon,
+            "noise_type": noise_type,
+        }
 
-    logger.info(f"Accuracy with {noise_type} noise (ε={epsilon}): {results['accuracy']:.4f}")
+    logger.info(
+        f"Accuracy with {noise_type} noise (ε={epsilon}): {results['accuracy']:.4f}"
+    )
 
     # Save result
     with open(run_dir / "results.json", "w") as f:
@@ -858,10 +806,8 @@ def run_noise_eval(
 
 
 def run_transfer_eval(
-    config: Dict[str, Any],
-    run_dir: Path,
-    device: torch.device
-) -> Dict[str, Any]:
+    config: dict[str, Any], run_dir: Path, device: torch.device
+) -> dict[str, Any]:
     """Evaluate transfer attack: generate adversarial from surrogate, test on target.
 
     Single run for one attack method. Use shell script for Table III.
@@ -895,7 +841,9 @@ def run_transfer_eval(
     target_path = options.get("target_model")
 
     if not surrogate_path or not target_path:
-        raise ValueError("transfer_eval requires options.surrogate_model and options.target_model")
+        raise ValueError(
+            "transfer_eval requires options.surrogate_model and options.target_model"
+        )
 
     # Determine surrogate model type from path
     image_size = dataset_config.get("image_size", 16)
@@ -905,9 +853,17 @@ def run_transfer_eval(
     # Load surrogate (infer type from config or path)
     surrogate_type = options.get("surrogate_type", "fnn")
     if surrogate_type == "cnn":
-        surrogate_config = {"type": "cnn", "image_size": image_size, "n_outputs": n_outputs}
+        surrogate_config = {
+            "type": "cnn",
+            "image_size": image_size,
+            "n_outputs": n_outputs,
+        }
     else:
-        surrogate_config = {"type": "fnn", "input_dim": input_dim, "n_outputs": n_outputs}
+        surrogate_config = {
+            "type": "fnn",
+            "input_dim": input_dim,
+            "n_outputs": n_outputs,
+        }
 
     surrogate = load_model(surrogate_path, surrogate_config, device)
 
@@ -922,7 +878,9 @@ def run_transfer_eval(
     epsilon = attack_config.get("epsilon", 0.1)
     num_iter = attack_config.get("num_iter", 10)
 
-    logger.info(f"Transfer: {surrogate_type} -> quantum, attack={attack_method}, ε={epsilon}")
+    logger.info(
+        f"Transfer: {surrogate_type} -> quantum, attack={attack_method}, ε={epsilon}"
+    )
 
     results = transfer_attack(
         surrogate_model=surrogate,
@@ -931,7 +889,7 @@ def run_transfer_eval(
         attack_method=attack_method,
         epsilon=epsilon,
         num_iter=num_iter,
-        device=device
+        device=device,
     )
 
     logger.info(f"Surrogate acc drop: {results['accuracy_drop_surrogate']:.3f}")
@@ -946,10 +904,8 @@ def run_transfer_eval(
 
 
 def run_comparison_experiment(
-    config: Dict[str, Any],
-    run_dir: Path,
-    device: torch.device
-) -> Dict[str, Any]:
+    config: dict[str, Any], run_dir: Path, device: torch.device
+) -> dict[str, Any]:
     """Run photonic vs gate-based comparison experiment.
 
     Trains both MerLin (photonic) and PennyLane (gate-based) classifiers
@@ -995,13 +951,18 @@ def run_comparison_experiment(
 
     photonic_model = create_model(photonic_config).to(device)
     photonic_results = train_model(
-        photonic_model, train_loader, test_loader,
-        training_config, device,
-        save_path=str(run_dir / "photonic_model.pt") if options.get("save_model") else None
+        photonic_model,
+        train_loader,
+        test_loader,
+        training_config,
+        device,
+        save_path=str(run_dir / "photonic_model.pt")
+        if options.get("save_model")
+        else None,
     )
     results["photonic"] = {
         "training": photonic_results,
-        "clean_accuracy": photonic_results["best_accuracy"]
+        "clean_accuracy": photonic_results["best_accuracy"],
     }
 
     # ==========================================================================
@@ -1021,13 +982,18 @@ def run_comparison_experiment(
 
         gate_model = create_model(gate_config).to(device)
         gate_results = train_model(
-            gate_model, train_loader, test_loader,
-            training_config, device,
-            save_path=str(run_dir / "gate_model.pt") if options.get("save_model") else None
+            gate_model,
+            train_loader,
+            test_loader,
+            training_config,
+            device,
+            save_path=str(run_dir / "gate_model.pt")
+            if options.get("save_model")
+            else None,
         )
         results["gate"] = {
             "training": gate_results,
-            "clean_accuracy": gate_results["best_accuracy"]
+            "clean_accuracy": gate_results["best_accuracy"],
         }
     except ImportError as e:
         logger.warning(f"PennyLane not available, skipping gate-based model: {e}")
@@ -1063,10 +1029,6 @@ def run_comparison_experiment(
     # ==========================================================================
     _save_comparison_results(results, run_dir)
 
-    # Generate comparison figure
-    if options.get("generate_figures", True):
-        _plot_comparison_results(results, run_dir)
-
     return results
 
 
@@ -1076,10 +1038,10 @@ def _evaluate_model_under_attack(
     attack_method: str,
     epsilon: float,
     num_iter: int,
-    device: torch.device
-) -> Dict[str, float]:
+    device: torch.device,
+) -> dict[str, float]:
     """Evaluate model under adversarial attack."""
-    from .attacks import bim_attack, fgsm_attack, pgd_attack, mim_attack
+    from .attacks import mim_attack, pgd_attack
 
     model.eval()
 
@@ -1118,11 +1080,11 @@ def _evaluate_model_under_attack(
     return {
         "clean_accuracy": clean_correct / total,
         "adversarial_accuracy": adv_correct / total,
-        "accuracy_drop": (clean_correct - adv_correct) / total
+        "accuracy_drop": (clean_correct - adv_correct) / total,
     }
 
 
-def _save_comparison_results(results: Dict[str, Any], run_dir: Path):
+def _save_comparison_results(results: dict[str, Any], run_dir: Path):
     """Save comparison results to file."""
     lines = [
         "Photonic vs Gate-Based Quantum Classifier Comparison",
@@ -1133,7 +1095,9 @@ def _save_comparison_results(results: Dict[str, Any], run_dir: Path):
     # Photonic results
     if "photonic" in results:
         lines.append("PHOTONIC (MerLin) Model:")
-        lines.append(f"  Clean Accuracy: {results['photonic'].get('clean_accuracy', 0):.1%}")
+        lines.append(
+            f"  Clean Accuracy: {results['photonic'].get('clean_accuracy', 0):.1%}"
+        )
         if "adversarial" in results["photonic"]:
             adv = results["photonic"]["adversarial"]
             lines.append(f"  Adversarial Accuracy: {adv['adversarial_accuracy']:.1%}")
@@ -1143,7 +1107,9 @@ def _save_comparison_results(results: Dict[str, Any], run_dir: Path):
     # Gate-based results
     if "gate" in results and "error" not in results["gate"]:
         lines.append("GATE-BASED (PennyLane) Model:")
-        lines.append(f"  Clean Accuracy: {results['gate'].get('clean_accuracy', 0):.1%}")
+        lines.append(
+            f"  Clean Accuracy: {results['gate'].get('clean_accuracy', 0):.1%}"
+        )
         if "adversarial" in results["gate"]:
             adv = results["gate"]["adversarial"]
             lines.append(f"  Adversarial Accuracy: {adv['adversarial_accuracy']:.1%}")
@@ -1157,7 +1123,7 @@ def _save_comparison_results(results: Dict[str, Any], run_dir: Path):
     logger.info(f"Saved comparison results to {run_dir / 'comparison_results.txt'}")
 
 
-def _plot_comparison_results(results: Dict[str, Any], run_dir: Path):
+def _plot_comparison_results(results: dict[str, Any], run_dir: Path):
     """Plot comparison bar chart."""
     import matplotlib.pyplot as plt
 
@@ -1182,11 +1148,11 @@ def _plot_comparison_results(results: Dict[str, Any], run_dir: Path):
     width = 0.35
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    bars1 = ax.bar(x - width/2, clean_accs, width, label='Clean', color='steelblue')
-    bars2 = ax.bar(x + width/2, adv_accs, width, label='Adversarial', color='coral')
+    bars1 = ax.bar(x - width / 2, clean_accs, width, label="Clean", color="steelblue")
+    bars2 = ax.bar(x + width / 2, adv_accs, width, label="Adversarial", color="coral")
 
-    ax.set_ylabel('Accuracy')
-    ax.set_title('Photonic vs Gate-Based Quantum Classifiers')
+    ax.set_ylabel("Accuracy")
+    ax.set_title("Photonic vs Gate-Based Quantum Classifiers")
     ax.set_xticks(x)
     ax.set_xticklabels(models)
     ax.legend()
@@ -1196,20 +1162,24 @@ def _plot_comparison_results(results: Dict[str, Any], run_dir: Path):
     # Add value labels
     for bar in bars1 + bars2:
         height = bar.get_height()
-        ax.annotate(f'{height:.1%}',
-                    xy=(bar.get_x() + bar.get_width() / 2, height),
-                    xytext=(0, 3),
-                    textcoords="offset points",
-                    ha='center', va='bottom', fontsize=9)
+        ax.annotate(
+            f"{height:.1%}",
+            xy=(bar.get_x() + bar.get_width() / 2, height),
+            xytext=(0, 3),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
 
     plt.tight_layout()
-    plt.savefig(run_dir / "comparison_plot.png", dpi=150, bbox_inches='tight')
+    plt.savefig(run_dir / "comparison_plot.png", dpi=150, bbox_inches="tight")
     plt.close()
 
     logger.info(f"Saved comparison plot to {run_dir / 'comparison_plot.png'}")
 
 
-def main(config: Dict[str, Any]) -> str:
+def main(config: dict[str, Any]) -> str:
     """Main entry point.
 
     Args:
@@ -1226,7 +1196,7 @@ def main(config: Dict[str, Any]) -> str:
     set_seed(seed)
 
     # Create run directory
-    outdir = config.get("outdir", "outdir")
+    outdir = config.get("outdir", "results")
     run_dir = create_run_dir(outdir)
     logger.info(f"Output directory: {run_dir}")
 
@@ -1247,9 +1217,11 @@ def main(config: Dict[str, Any]) -> str:
         # Optionally run attack after training
         if config.get("options", {}).get("run_attack", True):
             attack_results = run_attack_experiment(
-                config, run_dir, device,
+                config,
+                run_dir,
+                device,
                 model=results.get("model"),
-                test_loader=results.get("test_loader")
+                test_loader=results.get("test_loader"),
             )
             results["attack"] = attack_results
 
@@ -1265,9 +1237,11 @@ def main(config: Dict[str, Any]) -> str:
         # Optionally run attack
         if config.get("options", {}).get("run_attack", True):
             attack_results = run_attack_experiment(
-                config, run_dir, device,
+                config,
+                run_dir,
+                device,
                 model=results.get("model"),
-                test_loader=results.get("test_loader")
+                test_loader=results.get("test_loader"),
             )
             results["attack"] = attack_results
 
@@ -1277,9 +1251,11 @@ def main(config: Dict[str, Any]) -> str:
         # Optionally run attack
         if config.get("options", {}).get("run_attack", True):
             attack_results = run_attack_experiment(
-                config, run_dir, device,
+                config,
+                run_dir,
+                device,
                 model=results.get("model"),
-                test_loader=results.get("test_loader")
+                test_loader=results.get("test_loader"),
             )
             results["attack"] = attack_results
 
@@ -1303,7 +1279,7 @@ def main(config: Dict[str, Any]) -> str:
 
     # Save results summary
     summary = {"experiment": experiment}
-    
+
     # Handle training results (might be nested or at top level)
     if "training" in results:
         summary["best_accuracy"] = results["training"].get("best_accuracy", 0)
@@ -1311,16 +1287,20 @@ def main(config: Dict[str, Any]) -> str:
     elif "best_accuracy" in results:
         summary["best_accuracy"] = results.get("best_accuracy", 0)
         summary["final_accuracy"] = results.get("final_accuracy", 0)
-    
+
     # Handle defense experiment results
     if "final_clean_accuracy" in results:
         summary["final_clean_accuracy"] = results.get("final_clean_accuracy", 0)
-        summary["final_adversarial_accuracy"] = results.get("final_adversarial_accuracy", 0)
-    
+        summary["final_adversarial_accuracy"] = results.get(
+            "final_adversarial_accuracy", 0
+        )
+
     # Handle attack results (might be nested under "attack" or at top level)
     if "attack" in results:
         summary["fooling_rate"] = results["attack"].get("fooling_rate", 0)
-        summary["adversarial_accuracy"] = results["attack"].get("adversarial_accuracy", 0)
+        summary["adversarial_accuracy"] = results["attack"].get(
+            "adversarial_accuracy", 0
+        )
         summary["average_fidelity"] = results["attack"].get("average_fidelity", 0)
     elif "adversarial_accuracy" in results:
         # Standalone attack experiment
@@ -1339,7 +1319,7 @@ def main(config: Dict[str, Any]) -> str:
     return str(run_dir)
 
 
-def train_and_evaluate(config: Dict[str, Any], run_dir: Path) -> None:
+def train_and_evaluate(config: dict[str, Any], run_dir: Path) -> None:
     """Entry point for the shared repository runner.
 
     Args:
@@ -1353,16 +1333,18 @@ def train_and_evaluate(config: Dict[str, Any], run_dir: Path) -> None:
 
     device = get_device(config)
     experiment = config.get("experiment", "mnist")
-    
+
     results = {}
 
     if experiment == "mnist":
         results = run_mnist_experiment(config, run_dir, device)
         if config.get("options", {}).get("run_attack", True):
             attack_results = run_attack_experiment(
-                config, run_dir, device,
+                config,
+                run_dir,
+                device,
                 model=results.get("model"),
-                test_loader=results.get("test_loader")
+                test_loader=results.get("test_loader"),
             )
             results["attack"] = attack_results
 
@@ -1376,9 +1358,11 @@ def train_and_evaluate(config: Dict[str, Any], run_dir: Path) -> None:
         results = run_ising_experiment(config, run_dir, device)
         if config.get("options", {}).get("run_attack", True):
             attack_results = run_attack_experiment(
-                config, run_dir, device,
+                config,
+                run_dir,
+                device,
                 model=results.get("model"),
-                test_loader=results.get("test_loader")
+                test_loader=results.get("test_loader"),
             )
             results["attack"] = attack_results
 
@@ -1386,9 +1370,11 @@ def train_and_evaluate(config: Dict[str, Any], run_dir: Path) -> None:
         results = run_topological_experiment(config, run_dir, device)
         if config.get("options", {}).get("run_attack", True):
             attack_results = run_attack_experiment(
-                config, run_dir, device,
+                config,
+                run_dir,
+                device,
                 model=results.get("model"),
-                test_loader=results.get("test_loader")
+                test_loader=results.get("test_loader"),
             )
             results["attack"] = attack_results
 
@@ -1406,7 +1392,7 @@ def train_and_evaluate(config: Dict[str, Any], run_dir: Path) -> None:
 
     # Save summary with actual results
     summary = {"experiment": experiment, "completed": True}
-    
+
     # Handle training results (might be nested or at top level)
     if "training" in results:
         summary["best_accuracy"] = results["training"].get("best_accuracy", 0)
@@ -1414,28 +1400,32 @@ def train_and_evaluate(config: Dict[str, Any], run_dir: Path) -> None:
     elif "best_accuracy" in results:
         summary["best_accuracy"] = results.get("best_accuracy", 0)
         summary["final_accuracy"] = results.get("final_accuracy", 0)
-    
+
     # Handle defense experiment results
     if "final_clean_accuracy" in results:
         summary["final_clean_accuracy"] = results.get("final_clean_accuracy", 0)
-        summary["final_adversarial_accuracy"] = results.get("final_adversarial_accuracy", 0)
-    
+        summary["final_adversarial_accuracy"] = results.get(
+            "final_adversarial_accuracy", 0
+        )
+
     # Handle attack results (might be nested under "attack" or at top level)
     if "attack" in results:
         summary["fooling_rate"] = results["attack"].get("fooling_rate", 0)
-        summary["adversarial_accuracy"] = results["attack"].get("adversarial_accuracy", 0)
+        summary["adversarial_accuracy"] = results["attack"].get(
+            "adversarial_accuracy", 0
+        )
         summary["average_fidelity"] = results["attack"].get("average_fidelity", 0)
     elif "adversarial_accuracy" in results:
         # Standalone attack experiment
         summary["fooling_rate"] = results.get("fooling_rate", 0)
         summary["adversarial_accuracy"] = results.get("adversarial_accuracy", 0)
         summary["average_fidelity"] = results.get("average_fidelity", 0)
-    
+
     with open(run_dir / "summary_results.json", "w") as f:
         json.dump(summary, f, indent=2)
 
     (run_dir / "done.txt").write_text(f"Completed at {datetime.now().isoformat()}")
-    logger.info(f"Experiment complete!")
+    logger.info("Experiment complete!")
 
 
 if __name__ == "__main__":
@@ -1451,29 +1441,15 @@ if __name__ == "__main__":
         example_config = {
             "seed": 42,
             "experiment": "mnist",
-            "dataset": {
-                "digits": [1, 9],
-                "image_size": 16
-            },
+            "dataset": {"digits": [1, 9], "image_size": 16},
             "model": {
                 "type": "hybrid_quantum",
                 "n_modes": 8,
                 "n_photons": 2,
-                "n_layers": 2
+                "n_layers": 2,
             },
-            "training": {
-                "epochs": 10,
-                "batch_size": 256,
-                "learning_rate": 0.005
-            },
-            "attack": {
-                "method": "bim",
-                "epsilon": 0.1,
-                "num_iter": 3
-            },
-            "options": {
-                "generate_figures": True,
-                "run_attack": True
-            }
+            "training": {"epochs": 10, "batch_size": 256, "learning_rate": 0.005},
+            "attack": {"method": "bim", "epsilon": 0.1, "num_iter": 3},
+            "options": {"run_attack": True},
         }
         main(example_config)

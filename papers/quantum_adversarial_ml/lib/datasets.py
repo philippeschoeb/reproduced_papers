@@ -9,8 +9,7 @@ Data loading and preprocessing for the quantum adversarial learning experiments:
 """
 
 import logging
-from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import torch
@@ -55,9 +54,9 @@ class MNISTBinaryDataset(Dataset):
         root: str = "data",
         train: bool = True,
         download: bool = True,
-        digits: Tuple[int, int] = (1, 9),
+        digits: tuple[int, int] = (1, 9),
         image_size: int = 16,
-        normalize: bool = True
+        normalize: bool = True,
     ):
         """Initialize binary MNIST dataset.
 
@@ -107,20 +106,20 @@ class MNISTBinaryDataset(Dataset):
     def __len__(self) -> int:
         return len(self.dataset)
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
         image, orig_label = self.dataset[idx]
 
-        # Flatten image
+        # Flatten image to 1D vector
         image = image.view(-1)
 
         # Normalize for amplitude encoding
         if self.normalize:
             image = amplitude_encode(image.unsqueeze(0)).squeeze(0)
 
-        # Map to binary label
-        binary_label = self.label_map[orig_label]
+        # Map label
+        label = self.label_map[orig_label]
 
-        return image, binary_label
+        return image, label
 
 
 class MNISTMulticlassDataset(Dataset):
@@ -135,20 +134,23 @@ class MNISTMulticlassDataset(Dataset):
         root: str = "data",
         train: bool = True,
         download: bool = True,
-        digits: List[int] = [1, 3, 7, 9],
+        digits: list[int] | None = None,
         image_size: int = 16,
-        normalize: bool = True
+        normalize: bool = True,
     ):
-        """Initialize multi-class MNIST dataset.
+        """Initialize multiclass MNIST dataset.
 
         Args:
             root: Root directory for data
             train: If True, use training split
             download: Download if not present
             digits: List of digit classes to include
-            image_size: Size to resize images
+            image_size: Size to resize images (paper uses 16x16)
             normalize: Whether to normalize for amplitude encoding
         """
+        if digits is None:
+            digits = [1, 3, 7, 9]
+
         self.digits = digits
         self.image_size = image_size
         self.normalize = normalize
@@ -166,70 +168,71 @@ class MNISTMulticlassDataset(Dataset):
             root=root, train=train, download=download, transform=transform
         )
 
-        # Filter to specified classes
+        # Filter to selected classes
         targets = full_dataset.targets
         if isinstance(targets, torch.Tensor):
             targets = targets.clone().detach()
         else:
             targets = torch.tensor(targets)
+
         mask = torch.zeros_like(targets, dtype=torch.bool)
-        for d in digits:
-            mask |= (targets == d)
+        for digit in digits:
+            mask |= targets == digit
         indices = torch.where(mask)[0].tolist()
 
         self.dataset = Subset(full_dataset, indices)
 
-        # Map original labels to 0, 1, 2, ...
-        self.label_map = {d: i for i, d in enumerate(digits)}
+        # Map original labels to sequential (0, 1, 2, ...)
+        self.label_map = {digit: i for i, digit in enumerate(digits)}
 
         logger.info(
-            f"MNIST {self.n_classes}-class: digits {digits}, "
-            f"{len(self.dataset)} images"
+            f"MNIST multiclass: digits {digits}, "
+            f"{len(self.dataset)} images, {self.n_classes} classes"
         )
 
     def __len__(self) -> int:
         return len(self.dataset)
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
         image, orig_label = self.dataset[idx]
 
-        # Flatten image
+        # Flatten image to 1D vector
         image = image.view(-1)
 
         # Normalize for amplitude encoding
         if self.normalize:
             image = amplitude_encode(image.unsqueeze(0)).squeeze(0)
 
-        # Map to class index
-        class_label = self.label_map[orig_label]
+        # Map label
+        label = self.label_map[orig_label]
 
-        return image, class_label
+        return image, label
 
 
 class IsingDataset(Dataset):
     """Transverse field Ising model dataset.
 
     Generates ground states of the 1D transverse field Ising model:
-    H = -Σ σ_i^z σ_{i+1}^z - J_x Σ σ_i^x
+        H = -Σ σ_i^z σ_{i+1}^z - J_x Σ σ_i^x
 
-    Phase transition at J_x = 1:
-    - J_x < 1: Ferromagnetic phase
-    - J_x > 1: Paramagnetic phase
+    The phase transition occurs at J_x = 1:
+    - J_x < 1: Ordered phase (ferromagnetic)
+    - J_x > 1: Disordered phase (paramagnetic)
 
-    The ground states are computed via exact diagonalization.
+    From: Section III.C "Quantum adversarial learning quantum phase transitions"
     """
 
     def __init__(
         self,
         n_spins: int = 8,
         n_samples: int = 1000,
-        jx_range: Tuple[float, float] = (0.0, 2.0),
-        seed: Optional[int] = None
+        jx_range: tuple[float, float] = (0.0, 2.0),
+        seed: Optional[int] = None,
     ):
         """Initialize Ising dataset.
 
         Args:
-            n_spins: Number of spins (system size L)
+            n_spins: Number of spins (L in the paper)
             n_samples: Number of samples to generate
             jx_range: Range of transverse field strength
             seed: Random seed for reproducibility
@@ -237,7 +240,7 @@ class IsingDataset(Dataset):
         self.n_spins = n_spins
         self.n_samples = n_samples
         self.jx_range = jx_range
-        self.dim = 2 ** n_spins
+        self.critical_point = 1.0  # Phase transition at J_x = 1
 
         if seed is not None:
             np.random.seed(seed)
@@ -247,17 +250,18 @@ class IsingDataset(Dataset):
         self.labels = []
         self.jx_values = []
 
-        jx_samples = np.random.uniform(jx_range[0], jx_range[1], n_samples)
-
-        for jx in jx_samples:
-            # Compute ground state
-            ground_state = self._compute_ground_state(jx)
-            self.states.append(ground_state)
-
-            # Label: 0 for ferromagnetic (jx < 1), 1 for paramagnetic (jx > 1)
-            label = 0 if jx < 1.0 else 1
-            self.labels.append(label)
+        for _ in range(n_samples):
+            # Random J_x value
+            jx = np.random.uniform(jx_range[0], jx_range[1])
             self.jx_values.append(jx)
+
+            # Compute ground state
+            state = self._compute_ground_state(jx)
+            self.states.append(state)
+
+            # Label: 0 = ordered (J_x < 1), 1 = disordered (J_x > 1)
+            label = 0 if jx < self.critical_point else 1
+            self.labels.append(label)
 
         self.states = np.array(self.states, dtype=np.float32)
         self.labels = np.array(self.labels, dtype=np.int64)
@@ -302,12 +306,12 @@ class IsingDataset(Dataset):
             Hamiltonian matrix
         """
         L = self.n_spins
-        dim = 2 ** L
+        dim = 2**L
 
         # Pauli matrices
         sx = np.array([[0, 1], [1, 0]], dtype=np.float64)
         sz = np.array([[1, 0], [0, -1]], dtype=np.float64)
-        I = np.eye(2, dtype=np.float64)
+        identity_2x2 = np.eye(2, dtype=np.float64)
 
         H = np.zeros((dim, dim), dtype=np.float64)
 
@@ -319,7 +323,7 @@ class IsingDataset(Dataset):
                 if j == i or j == i + 1:
                     op = np.kron(op, sz)
                 else:
-                    op = np.kron(op, I)
+                    op = np.kron(op, identity_2x2)
             H -= op
 
         # Transverse field: -J_x Σ σ_i^x
@@ -329,7 +333,7 @@ class IsingDataset(Dataset):
                 if j == i:
                     op = np.kron(op, sx)
                 else:
-                    op = np.kron(op, I)
+                    op = np.kron(op, identity_2x2)
             H -= jx * op
 
         return H
@@ -337,7 +341,7 @@ class IsingDataset(Dataset):
     def __len__(self) -> int:
         return self.n_samples
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
         state = torch.tensor(self.states[idx])
         label = self.labels[idx]
         return state, label
@@ -347,10 +351,7 @@ class SpiralDataset(Dataset):
     """2D Spiral dataset for simple classification tests."""
 
     def __init__(
-        self,
-        n_samples: int = 1000,
-        noise: float = 0.0,
-        seed: Optional[int] = None
+        self, n_samples: int = 1000, noise: float = 0.0, seed: Optional[int] = None
     ):
         """Initialize spiral dataset.
 
@@ -378,14 +379,8 @@ class SpiralDataset(Dataset):
         y1 = r1 * np.sin(theta)
 
         # Combine
-        X = np.vstack([
-            np.column_stack([x0, y0]),
-            np.column_stack([x1, y1])
-        ])
-        y = np.hstack([
-            np.zeros(n_per_class),
-            np.ones(n_per_class)
-        ])
+        X = np.vstack([np.column_stack([x0, y0]), np.column_stack([x1, y1])])
+        y = np.hstack([np.zeros(n_per_class), np.ones(n_per_class)])
 
         # Add noise
         if noise > 0:
@@ -402,7 +397,7 @@ class SpiralDataset(Dataset):
     def __len__(self) -> int:
         return len(self.y)
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
         return torch.tensor(self.X[idx]), torch.tensor(self.y[idx])
 
 
@@ -429,10 +424,10 @@ class QAHDataset(Dataset):
         lattice_size: int = 10,
         n_samples: int = 1000,
         t: float = 1.0,
-        j_so_range: Tuple[float, float] = (0.5, 2.0),
-        mu_range: Tuple[float, float] = (-6.0, 6.0),
+        j_so_range: tuple[float, float] = (0.5, 2.0),
+        mu_range: tuple[float, float] = (-6.0, 6.0),
         momentum_resolution: int = 20,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
     ):
         """Initialize QAH dataset.
 
@@ -492,12 +487,7 @@ class QAHDataset(Dataset):
             f"trivial: {n_trivial}, topological: {n_topological}"
         )
 
-    def _compute_tof_image(
-        self,
-        j_so: float,
-        mu: float,
-        t: float
-    ) -> np.ndarray:
+    def _compute_tof_image(self, j_so: float, mu: float, t: float) -> np.ndarray:
         """Compute time-of-flight image (momentum distribution).
 
         The ToF image shows the momentum-space density distribution
@@ -534,7 +524,7 @@ class QAHDataset(Dataset):
                     # |u_-⟩ = (sin(θ/2), -cos(θ/2)e^{iφ})
                     # where θ = arccos(dz/|d|), φ = arctan2(dy, dx)
                     theta = np.arccos(dz / E)
-                    phi = np.arctan2(dy, dx)
+                    # phi = np.arctan2(dy, dx)  # Not used in density calculation
 
                     # Momentum distribution (|⟨↑|u_-⟩|² + |⟨↓|u_-⟩|²)
                     # which is 1 for normalized state, but we weight by
@@ -552,7 +542,7 @@ class QAHDataset(Dataset):
     def __len__(self) -> int:
         return self.n_samples
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
         # Flatten image for input to classifier
         image = torch.tensor(self.tof_images[idx]).flatten()
         label = self.labels[idx]
@@ -574,8 +564,8 @@ class TopologicalPhaseDataset(Dataset):
         self,
         n_sites: int = 20,
         n_samples: int = 1000,
-        parameter_range: Tuple[float, float] = (0.1, 2.0),
-        seed: Optional[int] = None
+        parameter_range: tuple[float, float] = (0.1, 2.0),
+        seed: Optional[int] = None,
     ):
         """Initialize topological phase dataset.
 
@@ -640,15 +630,13 @@ class TopologicalPhaseDataset(Dataset):
     def __len__(self) -> int:
         return self.n_samples
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
         return torch.tensor(self.features[idx]), self.labels[idx]
 
 
 def create_dataloaders(
-    dataset_name: str,
-    config: dict,
-    seed: int = 42
-) -> Tuple[DataLoader, DataLoader]:
+    dataset_name: str, config: dict, seed: int = 42
+) -> tuple[DataLoader, DataLoader]:
     """Create train and test dataloaders from config.
 
     Args:
@@ -669,7 +657,7 @@ def create_dataloaders(
             download=config.get("download", True),
             digits=tuple(config.get("digits", [1, 9])),
             image_size=config.get("image_size", 16),
-            normalize=config.get("normalize", True)
+            normalize=config.get("normalize", True),
         )
         test_dataset = MNISTBinaryDataset(
             root=config.get("root", "data"),
@@ -677,7 +665,7 @@ def create_dataloaders(
             download=config.get("download", True),
             digits=tuple(config.get("digits", [1, 9])),
             image_size=config.get("image_size", 16),
-            normalize=config.get("normalize", True)
+            normalize=config.get("normalize", True),
         )
         batch_size = config.get("batch_size", 256)
 
@@ -688,7 +676,7 @@ def create_dataloaders(
             download=config.get("download", True),
             digits=config.get("digits", [1, 3, 7, 9]),
             image_size=config.get("image_size", 16),
-            normalize=config.get("normalize", True)
+            normalize=config.get("normalize", True),
         )
         test_dataset = MNISTMulticlassDataset(
             root=config.get("root", "data"),
@@ -696,7 +684,7 @@ def create_dataloaders(
             download=config.get("download", True),
             digits=config.get("digits", [1, 3, 7, 9]),
             image_size=config.get("image_size", 16),
-            normalize=config.get("normalize", True)
+            normalize=config.get("normalize", True),
         )
         batch_size = config.get("batch_size", 512)
 
@@ -709,7 +697,7 @@ def create_dataloaders(
             n_spins=config.get("n_spins", 8),
             n_samples=n_total,
             jx_range=tuple(config.get("jx_range", [0.0, 2.0])),
-            seed=seed
+            seed=seed,
         )
 
         train_dataset, test_dataset = torch.utils.data.random_split(
@@ -722,9 +710,7 @@ def create_dataloaders(
         n_train = config.get("n_train", 2000)
 
         full_dataset = SpiralDataset(
-            n_samples=n_total,
-            noise=config.get("noise", 0.0),
-            seed=seed
+            n_samples=n_total, noise=config.get("noise", 0.0), seed=seed
         )
 
         train_dataset, test_dataset = torch.utils.data.random_split(
@@ -743,7 +729,7 @@ def create_dataloaders(
             j_so_range=tuple(config.get("j_so_range", [0.5, 2.0])),
             mu_range=tuple(config.get("mu_range", [-6.0, 6.0])),
             momentum_resolution=config.get("momentum_resolution", 20),
-            seed=seed
+            seed=seed,
         )
 
         train_dataset, test_dataset = torch.utils.data.random_split(
@@ -767,17 +753,11 @@ def create_dataloaders(
         test_dataset = torch.utils.data.Subset(test_dataset, indices)
 
     train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=0
+        train_dataset, batch_size=batch_size, shuffle=True, num_workers=0
     )
 
     test_loader = DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=0
+        test_dataset, batch_size=batch_size, shuffle=False, num_workers=0
     )
 
     return train_loader, test_loader

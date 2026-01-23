@@ -26,11 +26,7 @@ class TestDatasets:
         from lib.datasets import MNISTBinaryDataset
 
         dataset = MNISTBinaryDataset(
-            root="data",
-            train=True,
-            download=True,
-            digits=(1, 9),
-            image_size=16
+            root="data", train=True, download=True, digits=(1, 9), image_size=16
         )
 
         assert len(dataset) > 0
@@ -44,11 +40,7 @@ class TestDatasets:
         from lib.datasets import MNISTMulticlassDataset
 
         dataset = MNISTMulticlassDataset(
-            root="data",
-            train=True,
-            download=True,
-            digits=[1, 3, 7, 9],
-            image_size=16
+            root="data", train=True, download=True, digits=[1, 3, 7, 9], image_size=16
         )
 
         assert len(dataset) > 0
@@ -65,7 +57,7 @@ class TestDatasets:
             n_spins=6,  # Small for testing
             n_samples=50,
             jx_range=(0.0, 2.0),
-            seed=42
+            seed=42,
         )
 
         assert len(dataset) == 50
@@ -82,7 +74,7 @@ class TestDatasets:
             lattice_size=8,
             n_samples=20,
             momentum_resolution=10,  # Small for testing
-            seed=42
+            seed=42,
         )
 
         assert len(dataset) == 20
@@ -99,11 +91,7 @@ class TestDatasets:
         """Test simplified topological phase dataset."""
         from lib.datasets import TopologicalPhaseDataset
 
-        dataset = TopologicalPhaseDataset(
-            n_sites=10,
-            n_samples=50,
-            seed=42
-        )
+        dataset = TopologicalPhaseDataset(n_sites=10, n_samples=50, seed=42)
 
         assert len(dataset) == 50
 
@@ -126,11 +114,7 @@ class TestDatasets:
         """Test dataloader creation."""
         from lib.datasets import create_dataloaders
 
-        config = {
-            "digits": [1, 9],
-            "image_size": 16,
-            "batch_size": 32
-        }
+        config = {"digits": [1, 9], "image_size": 16, "batch_size": 32}
 
         train_loader, test_loader = create_dataloaders("mnist_binary", config, seed=42)
 
@@ -147,10 +131,10 @@ class TestCircuits:
 
     def test_merlin_import(self):
         """Test MerLin can be imported."""
-        import merlin as ML
-        from merlin import QuantumLayer, ComputationSpace
+        import merlin as ml
+        from merlin import QuantumLayer
 
-        assert ML is not None
+        assert ml is not None
         assert QuantumLayer is not None
 
     def test_create_classifier_circuit(self):
@@ -194,7 +178,7 @@ class TestCircuits:
             n_modes=4,
             n_photons=2,
             n_layers=2,
-            computation_space="unbunched"
+            computation_space="unbunched",
         )
 
         x = torch.randn(2, 4)
@@ -205,6 +189,7 @@ class TestCircuits:
     def test_pennylane_available_flag(self):
         """Test PennyLane availability flag."""
         from lib.circuits import PENNYLANE_AVAILABLE
+
         # Just check the flag exists and is boolean
         assert isinstance(PENNYLANE_AVAILABLE, bool)
 
@@ -214,10 +199,7 @@ class TestCircuits:
         from lib.circuits import PennyLaneSimpleClassifier
 
         model = PennyLaneSimpleClassifier(
-            n_inputs=4,
-            n_outputs=2,
-            n_layers=2,
-            scale_type="pi"
+            n_inputs=4, n_outputs=2, n_layers=2, scale_type="pi"
         )
 
         x = torch.randn(2, 4)
@@ -230,11 +212,7 @@ class TestCircuits:
         from lib.circuits import PennyLaneHybridClassifier
 
         model = PennyLaneHybridClassifier(
-            input_dim=16,
-            n_outputs=2,
-            hidden_dims=[8],
-            n_qubits=4,
-            n_layers=2
+            input_dim=16, n_outputs=2, hidden_dims=[8], n_qubits=4, n_layers=2
         )
 
         x = torch.randn(2, 16)
@@ -250,11 +228,7 @@ class TestModels:
         from lib.models import QuantumClassifier
 
         model = QuantumClassifier(
-            n_inputs=2,
-            n_outputs=2,
-            n_modes=4,
-            n_photons=2,
-            n_layers=2
+            n_inputs=2, n_outputs=2, n_modes=4, n_photons=2, n_layers=2
         )
 
         x = torch.randn(2, 2)
@@ -272,7 +246,7 @@ class TestModels:
             hidden_dims=[64, 32],
             n_modes=6,
             n_photons=2,
-            n_layers=2
+            n_layers=2,
         )
 
         x = torch.randn(2, 256)
@@ -284,11 +258,7 @@ class TestModels:
         """Test ClassicalBaseline."""
         from lib.models import ClassicalBaseline
 
-        model = ClassicalBaseline(
-            input_dim=256,
-            n_outputs=2,
-            hidden_dims=[64, 32]
-        )
+        model = ClassicalBaseline(input_dim=256, n_outputs=2, hidden_dims=[64, 32])
 
         x = torch.randn(3, 256)
         output = model(x)
@@ -300,10 +270,7 @@ class TestModels:
         from lib.models import ClassicalCNN
 
         model = ClassicalCNN(
-            input_channels=1,
-            image_size=16,
-            n_outputs=2,
-            n_filters=[16, 32]
+            input_channels=1, image_size=16, n_outputs=2, n_filters=[16, 32]
         )
 
         # Test with flattened input
@@ -320,11 +287,7 @@ class TestModels:
         """Test ClassicalFNN for transfer attacks."""
         from lib.models import ClassicalFNN
 
-        model = ClassicalFNN(
-            input_dim=256,
-            n_outputs=2,
-            hidden_dims=[128, 64, 32]
-        )
+        model = ClassicalFNN(input_dim=256, n_outputs=2, hidden_dims=[128, 64, 32])
 
         x = torch.randn(3, 256)
         output = model(x)
@@ -341,7 +304,7 @@ class TestModels:
             "n_outputs": 2,
             "n_modes": 4,
             "n_photons": 2,
-            "n_layers": 2
+            "n_layers": 2,
         }
 
         model = create_model(config)
@@ -352,8 +315,9 @@ class TestModels:
 
     def test_amplitude_classifier(self):
         """Test MerLinAmplitudeClassifier with proper amplitude encoding."""
-        from lib.circuits import MerLinAmplitudeClassifier
         from math import comb
+
+        from lib.circuits import MerLinAmplitudeClassifier
 
         model = MerLinAmplitudeClassifier(
             input_dim=64,
@@ -362,7 +326,7 @@ class TestModels:
             n_photons=2,
             n_layers=2,
             hidden_dims=[32, 16],
-            computation_space="unbunched"  # Default
+            computation_space="unbunched",  # Default
         )
 
         # Verify state space dimension calculation
@@ -387,7 +351,7 @@ class TestModels:
             "n_photons": 2,
             "n_layers": 2,
             "hidden_dims": [32, 16],
-            "computation_space": "unbunched"
+            "computation_space": "unbunched",
         }
         model = create_model(config)
         assert model is not None
@@ -506,7 +470,7 @@ class TestAttacks:
             target_model=target,
             dataloader=loader,
             attack_method="fgsm",
-            epsilon=0.1
+            epsilon=0.1,
         )
 
         assert "target_adversarial_accuracy" in results
@@ -576,7 +540,7 @@ class TestAttacks:
             dataloader=loader,
             epsilon_values=[0.05, 0.1],
             attack_method="fgsm",
-            num_iter=3
+            num_iter=3,
         )
 
         assert "clean_accuracy" in results
@@ -591,9 +555,9 @@ class TestDefense:
 
     def test_adversarial_training_step(self):
         """Test adversarial training step."""
+        import torch.optim as optim
         from lib.defense import adversarial_training_step
         from lib.models import ClassicalBaseline
-        import torch.optim as optim
 
         model = ClassicalBaseline(input_dim=16, n_outputs=2, hidden_dims=[8])
         optimizer = optim.Adam(model.parameters(), lr=0.01)
@@ -603,8 +567,7 @@ class TestDefense:
         y = torch.randint(0, 2, (10,))
 
         loss, clean_acc, adv_acc = adversarial_training_step(
-            model, x, y, optimizer, criterion,
-            attack_method="fgsm", epsilon=0.1
+            model, x, y, optimizer, criterion, attack_method="fgsm", epsilon=0.1
         )
 
         assert loss > 0
@@ -619,8 +582,8 @@ class TestTraining:
         """Test single training epoch."""
         import torch.nn as nn
         import torch.optim as optim
-        from torch.utils.data import DataLoader, TensorDataset
         from lib.training import train_epoch
+        from torch.utils.data import DataLoader, TensorDataset
 
         # Simple dataset
         X = torch.rand(100, 16)
@@ -632,7 +595,9 @@ class TestTraining:
         optimizer = optim.Adam(model.parameters())
         criterion = nn.CrossEntropyLoss()
 
-        loss, acc = train_epoch(model, loader, optimizer, criterion, torch.device("cpu"))
+        loss, acc = train_epoch(
+            model, loader, optimizer, criterion, torch.device("cpu")
+        )
 
         assert loss > 0
         assert 0 <= acc <= 1
@@ -640,8 +605,8 @@ class TestTraining:
     def test_evaluate(self):
         """Test evaluation."""
         import torch.nn as nn
-        from torch.utils.data import DataLoader, TensorDataset
         from lib.training import evaluate
+        from torch.utils.data import DataLoader, TensorDataset
 
         X = torch.rand(50, 16)
         y = torch.randint(0, 2, (50,))
@@ -679,47 +644,22 @@ class TestExports:
     def test_lib_exports(self):
         """Test main lib exports."""
         from lib import (
-            # Circuits
-            MerLinQuantumClassifier,
-            MerLinAmplitudeClassifier,
-            MerLinAmplitudeClassifierDirect,
-            # Models
-            QuantumClassifier,
-            HybridQuantumClassifier,
-            ClassicalBaseline,
+            # Defense
             ClassicalCNN,
             ClassicalFNN,
-            create_model,
+            MerLinAmplitudeClassifier,
+            MerLinAmplitudeClassifierDirect,
+            # Circuits
+            MerLinQuantumClassifier,
             # Datasets
-            MNISTBinaryDataset,
-            MNISTMulticlassDataset,
-            IsingDataset,
             QAHDataset,
-            TopologicalPhaseDataset,
-            SpiralDataset,
-            create_dataloaders,
-            # Attacks
-            fgsm_attack,
-            bim_attack,
-            pgd_attack,
-            mim_attack,
-            functional_attack,
-            functional_fgsm_attack,
-            transfer_attack,
+            # Models
             add_random_noise,
-            evaluate_with_photon_loss,
             compare_noise_vs_adversarial,
-            # Defense
-            AdversarialTrainer,
-            evaluate_robustness,
-            # Training
-            train_epoch,
-            evaluate,
-            Trainer,
-            train_model,
-            # Runner
-            main,
-            set_seed,
+            create_dataloaders,
+            create_model,
+            functional_attack,
+            transfer_attack,
         )
 
         # Core quantum components

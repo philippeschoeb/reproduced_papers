@@ -17,12 +17,12 @@ echo ""
 echo "Training topological phase classifier..."
 python "$REPO_ROOT/implementation.py" --paper quantum_adversarial_ml \
     --config configs/topological.json \
-    --outdir outdir/topological
+    --outdir results/topological
 
 # Find and symlink model if in subdirectory
-MODEL_PATH=$(find outdir/topological -name "model.pt" | head -1)
+MODEL_PATH=$(find results/topological -name "model.pt" | head -1)
 if [ -n "$MODEL_PATH" ]; then
-    ln -sf "$(basename $(dirname $MODEL_PATH))/model.pt" outdir/topological/model.pt 2>/dev/null || true
+    ln -sf "$(basename $(dirname $MODEL_PATH))/model.pt" results/topological/model.pt 2>/dev/null || true
 fi
 
 # Evaluate with adversarial attack
@@ -30,7 +30,7 @@ echo ""
 echo "Evaluating adversarial robustness..."
 python "$REPO_ROOT/implementation.py" --paper quantum_adversarial_ml \
     --config configs/topological_attack.json \
-    --outdir outdir/topological_attack
+    --outdir results/topological_attack
 
 echo ""
 echo "=== Topological Phases Complete ==="

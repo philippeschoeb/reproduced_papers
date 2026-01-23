@@ -18,15 +18,15 @@ echo "Paper: Quantum Adversarial Machine Learning (Lu et al., 2020)"
 echo ""
 
 # Step 1: Train the quantum classifier (target)
-MODEL_PATH="outdir/train_quantum/model.pt"
+MODEL_PATH="results/train_quantum/model.pt"
 if [ ! -f "$MODEL_PATH" ]; then
     echo "Step 1: Training quantum classifier (target)..."
     python "$REPO_ROOT/implementation.py" --paper quantum_adversarial_ml \
         --config configs/train_quantum.json \
-        --outdir outdir/train_quantum
+        --outdir results/train_quantum
     
-    MODEL_PATH=$(find outdir/train_quantum -name "model.pt" | head -1)
-    ln -sf "$(basename $(dirname $MODEL_PATH))/model.pt" outdir/train_quantum/model.pt 2>/dev/null || true
+    MODEL_PATH=$(find results/train_quantum -name "model.pt" | head -1)
+    ln -sf "$(basename $(dirname $MODEL_PATH))/model.pt" results/train_quantum/model.pt 2>/dev/null || true
 else
     echo "Step 1: Skipping quantum training (model exists)"
 fi
@@ -36,25 +36,25 @@ echo ""
 echo "Step 2: Training CNN surrogate..."
 python "$REPO_ROOT/implementation.py" --paper quantum_adversarial_ml \
     --config configs/train_cnn.json \
-    --outdir outdir/train_cnn
+    --outdir results/train_cnn
 
 # Step 3: Train FNN surrogate
 echo ""
 echo "Step 3: Training FNN surrogate..."
 python "$REPO_ROOT/implementation.py" --paper quantum_adversarial_ml \
     --config configs/train_fnn.json \
-    --outdir outdir/train_fnn
+    --outdir results/train_fnn
 
 # Step 4: Run transfer attack experiment
 echo ""
 echo "Step 4: Running transfer attack evaluation..."
 python "$REPO_ROOT/implementation.py" --paper quantum_adversarial_ml \
     --config configs/transfer_attack.json \
-    --outdir outdir/transfer_attacks
+    --outdir results/transfer_attacks
 
 echo ""
 echo "=== Table III Complete ==="
-echo "Results saved in outdir/transfer_attacks/"
+echo "Results saved in results/transfer_attacks/"
 echo ""
 echo "Key finding: Adversarial examples from classical surrogates"
 echo "transfer poorly to quantum classifiers, suggesting quantum"

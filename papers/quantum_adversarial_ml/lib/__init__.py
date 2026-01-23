@@ -21,69 +21,69 @@ Modules:
 """
 
 from .circuits import (
-    MerLinQuantumClassifier,
+    PENNYLANE_AVAILABLE,
     MerLinAmplitudeClassifier,
     MerLinAmplitudeClassifierDirect,
-    create_classifier_circuit,
+    MerLinQuantumClassifier,
     ScaleLayer,
-    PENNYLANE_AVAILABLE,
+    create_classifier_circuit,
 )
 
 # Conditionally import PennyLane classes
 if PENNYLANE_AVAILABLE:
     from .circuits import (
-        PennyLaneQuantumClassifier,
         PennyLaneHybridClassifier,
+        PennyLaneQuantumClassifier,
         PennyLaneSimpleClassifier,
     )
 
+from .attacks import (
+    add_random_noise,
+    bim_attack,
+    compare_noise_vs_adversarial,
+    compute_fidelity,
+    evaluate_attack_success,
+    evaluate_with_photon_loss,
+    fgsm_attack,
+    functional_attack,
+    functional_fgsm_attack,
+    generate_adversarial_examples,
+    mim_attack,
+    pgd_attack,
+    run_noise_comparison_experiment,
+    run_transfer_attack_experiment,
+    transfer_attack,
+)
 from .datasets import (
+    IsingDataset,
     MNISTBinaryDataset,
     MNISTMulticlassDataset,
-    IsingDataset,
     QAHDataset,
-    TopologicalPhaseDataset,
     SpiralDataset,
-    create_dataloaders,
+    TopologicalPhaseDataset,
     amplitude_encode,
+    create_dataloaders,
+)
+from .defense import (
+    AdversarialTrainer,
+    adversarial_training_step,
+    evaluate_robustness,
 )
 from .models import (
-    QuantumClassifier,
-    HybridQuantumClassifier,
     ClassicalBaseline,
     ClassicalCNN,
     ClassicalFNN,
+    HybridQuantumClassifier,
+    QuantumClassifier,
     create_model,
 )
-from .attacks import (
-    fgsm_attack,
-    bim_attack,
-    pgd_attack,
-    mim_attack,
-    functional_attack,
-    functional_fgsm_attack,
-    transfer_attack,
-    run_transfer_attack_experiment,
-    generate_adversarial_examples,
-    compute_fidelity,
-    evaluate_attack_success,
-    add_random_noise,
-    evaluate_with_photon_loss,
-    compare_noise_vs_adversarial,
-    run_noise_comparison_experiment,
-)
-from .defense import (
-    adversarial_training_step,
-    AdversarialTrainer,
-    evaluate_robustness,
-)
+from .runner import main, set_seed
 from .training import (
-    train_epoch,
-    evaluate,
     Trainer,
+    evaluate,
+    train_epoch,
     train_model,
 )
-from .runner import main, set_seed
 
 __all__ = [
     # Circuits - Photonic

@@ -13,11 +13,11 @@ quantum classifiers to make incorrect predictions.
 """
 
 import logging
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as functional
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def fgsm_attack(
     epsilon: float,
     criterion: nn.Module = None,
     targeted: bool = False,
-    target_label: Optional[torch.Tensor] = None
+    target_label: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """Fast Gradient Sign Method (FGSM) attack.
 
@@ -96,7 +96,7 @@ def bim_attack(
     num_iter: int = 10,
     criterion: nn.Module = None,
     targeted: bool = False,
-    target_label: Optional[torch.Tensor] = None
+    target_label: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """Basic Iterative Method (BIM) attack.
 
@@ -127,7 +127,7 @@ def bim_attack(
     # Initialize adversarial example
     x_adv = x.clone().detach()
 
-    for i in range(num_iter):
+    for _ in range(num_iter):
         x_adv.requires_grad_(True)
 
         # Forward pass
@@ -172,7 +172,7 @@ def pgd_attack(
     criterion: nn.Module = None,
     random_start: bool = True,
     targeted: bool = False,
-    target_label: Optional[torch.Tensor] = None
+    target_label: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """Projected Gradient Descent (PGD) attack.
 
@@ -208,7 +208,7 @@ def pgd_attack(
     else:
         x_adv = x.clone().detach()
 
-    for i in range(num_iter):
+    for _ in range(num_iter):
         x_adv.requires_grad_(True)
 
         # Forward pass
@@ -253,7 +253,7 @@ def mim_attack(
     decay: float = 1.0,
     criterion: nn.Module = None,
     targeted: bool = False,
-    target_label: Optional[torch.Tensor] = None
+    target_label: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """Momentum Iterative Method (MIM) attack.
 
@@ -286,7 +286,7 @@ def mim_attack(
     x_adv = x.clone().detach()
     momentum = torch.zeros_like(x)
 
-    for i in range(num_iter):
+    for _ in range(num_iter):
         x_adv.requires_grad_(True)
 
         # Forward pass
@@ -340,8 +340,8 @@ def generate_adversarial_examples(
     device: torch.device = None,
     targeted: bool = False,
     target_class: Optional[int] = None,
-    max_samples: Optional[int] = None
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    max_samples: Optional[int] = None,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Generate adversarial examples for a dataset.
 
     Args:
@@ -369,7 +369,7 @@ def generate_adversarial_examples(
         "fgsm": fgsm_attack,
         "bim": bim_attack,
         "pgd": pgd_attack,
-        "mim": mim_attack
+        "mim": mim_attack,
     }.get(attack_method.lower())
 
     if attack_fn is None:
@@ -382,7 +382,7 @@ def generate_adversarial_examples(
 
     n_samples = 0
 
-    for batch_idx, (data, labels) in enumerate(dataloader):
+    for _, (data, labels) in enumerate(dataloader):
         data, labels = data.to(device), labels.to(device)
 
         # Generate target labels if targeted attack
@@ -391,22 +391,33 @@ def generate_adversarial_examples(
                 target_labels = torch.full_like(labels, target_class)
             else:
                 # Random target (different from true label)
-                n_classes = model.n_outputs if hasattr(model, 'n_outputs') else 2
-                target_labels = (labels + torch.randint(1, n_classes, labels.shape, device=device)) % n_classes
+                n_classes = model.n_outputs if hasattr(model, "n_outputs") else 2
+                target_labels = (
+                    labels + torch.randint(1, n_classes, labels.shape, device=device)
+                ) % n_classes
         else:
             target_labels = None
 
         # Generate adversarial examples
         if attack_method.lower() == "fgsm":
             adv_data = attack_fn(
-                model, data, labels, epsilon,
-                targeted=targeted, target_label=target_labels
+                model,
+                data,
+                labels,
+                epsilon,
+                targeted=targeted,
+                target_label=target_labels,
             )
         else:
             adv_data = attack_fn(
-                model, data, labels, epsilon,
-                alpha=alpha, num_iter=num_iter,
-                targeted=targeted, target_label=target_labels
+                model,
+                data,
+                labels,
+                epsilon,
+                alpha=alpha,
+                num_iter=num_iter,
+                targeted=targeted,
+                target_label=target_labels,
             )
 
         # Get predictions on adversarial examples
@@ -440,7 +451,7 @@ def functional_attack(
     alpha: float = None,
     criterion: nn.Module = None,
     targeted: bool = False,
-    target_label: Optional[torch.Tensor] = None
+    target_label: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """Functional adversarial attack using local perturbations.
 
@@ -479,13 +490,15 @@ def functional_attack(
     # Initialize phase perturbations (one per feature/mode)
     delta = torch.zeros(batch_size, n_features, device=x.device, requires_grad=True)
 
-    for i in range(num_iter):
+    for _ in range(num_iter):
         # Apply functional perturbation: multiply by cos(delta)
         # This mimics local phase shifter rotations
         x_adv = x * torch.cos(delta)
 
         # Renormalize to maintain amplitude encoding property
-        x_adv = F.normalize(x_adv, p=2, dim=-1) * torch.norm(x, p=2, dim=-1, keepdim=True)
+        x_adv = functional.normalize(x_adv, p=2, dim=-1) * torch.norm(
+            x, p=2, dim=-1, keepdim=True
+        )
 
         # Forward pass
         outputs = model(x_adv)
@@ -530,7 +543,7 @@ def functional_fgsm_attack(
     epsilon: float,
     criterion: nn.Module = None,
     targeted: bool = False,
-    target_label: Optional[torch.Tensor] = None
+    target_label: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """Single-step functional attack (FGSM-style).
 
@@ -556,7 +569,9 @@ def functional_fgsm_attack(
 
     # Apply perturbation
     x_adv = x * torch.cos(delta)
-    x_adv = F.normalize(x_adv, p=2, dim=-1) * torch.norm(x, p=2, dim=-1, keepdim=True)
+    x_adv = functional.normalize(x_adv, p=2, dim=-1) * torch.norm(
+        x, p=2, dim=-1, keepdim=True
+    )
 
     # Forward pass
     outputs = model(x_adv)
@@ -586,7 +601,9 @@ def functional_fgsm_attack(
     return x_adv.detach()
 
 
-def compute_fidelity(clean_samples: torch.Tensor, adv_samples: torch.Tensor) -> torch.Tensor:
+def compute_fidelity(
+    clean_samples: torch.Tensor, adv_samples: torch.Tensor
+) -> torch.Tensor:
     """Compute fidelity between clean and adversarial samples.
 
     For amplitude-encoded quantum states, fidelity is the squared
@@ -600,12 +617,12 @@ def compute_fidelity(clean_samples: torch.Tensor, adv_samples: torch.Tensor) -> 
         Fidelity values for each sample
     """
     # Normalize samples
-    clean_norm = F.normalize(clean_samples, p=2, dim=-1)
-    adv_norm = F.normalize(adv_samples, p=2, dim=-1)
+    clean_norm = functional.normalize(clean_samples, p=2, dim=-1)
+    adv_norm = functional.normalize(adv_samples, p=2, dim=-1)
 
     # Compute inner product squared (fidelity)
     inner_product = torch.sum(clean_norm * adv_norm, dim=-1)
-    fidelity = inner_product ** 2
+    fidelity = inner_product**2
 
     return fidelity
 
@@ -615,7 +632,7 @@ def evaluate_attack_success(
     adv_predictions: torch.Tensor,
     clean_predictions: Optional[torch.Tensor] = None,
     targeted: bool = False,
-    target_labels: Optional[torch.Tensor] = None
+    target_labels: Optional[torch.Tensor] = None,
 ) -> dict:
     """Evaluate attack success metrics.
 
@@ -629,12 +646,10 @@ def evaluate_attack_success(
     Returns:
         Dictionary with attack success metrics
     """
-    n_samples = len(clean_labels)
-
     # Untargeted success: prediction changed from correct to incorrect
     if clean_predictions is not None:
         # Among correctly classified samples
-        correct_mask = (clean_predictions == clean_labels)
+        correct_mask = clean_predictions == clean_labels
         n_correct = correct_mask.sum().item()
 
         # Fooled: was correct, now incorrect
@@ -666,8 +681,8 @@ def transfer_attack(
     num_iter: int = 10,
     alpha: float = None,
     device: torch.device = None,
-    max_samples: Optional[int] = None
-) -> Dict[str, Any]:
+    max_samples: Optional[int] = None,
+) -> dict[str, Any]:
     """Black-box transfer attack.
 
     Generate adversarial examples using a surrogate model and evaluate
@@ -698,9 +713,15 @@ def transfer_attack(
     # Select attack function
     attack_fn = {
         "fgsm": lambda m, x, y, e: fgsm_attack(m, x, y, e),
-        "bim": lambda m, x, y, e: bim_attack(m, x, y, e, alpha=alpha, num_iter=num_iter),
-        "pgd": lambda m, x, y, e: pgd_attack(m, x, y, e, alpha=alpha, num_iter=num_iter),
-        "mim": lambda m, x, y, e: mim_attack(m, x, y, e, alpha=alpha, num_iter=num_iter),
+        "bim": lambda m, x, y, e: bim_attack(
+            m, x, y, e, alpha=alpha, num_iter=num_iter
+        ),
+        "pgd": lambda m, x, y, e: pgd_attack(
+            m, x, y, e, alpha=alpha, num_iter=num_iter
+        ),
+        "mim": lambda m, x, y, e: mim_attack(
+            m, x, y, e, alpha=alpha, num_iter=num_iter
+        ),
     }.get(attack_method.lower())
 
     if attack_fn is None:
@@ -765,11 +786,15 @@ def transfer_attack(
 
     # Transfer rate: fraction of successful attacks that transfer
     # Success on surrogate = was correct, now wrong
-    surrogate_success = (surrogate_clean_preds == clean_labels) & (surrogate_adv_preds != clean_labels)
+    surrogate_success = (surrogate_clean_preds == clean_labels) & (
+        surrogate_adv_preds != clean_labels
+    )
     # Of those, how many also fool target?
-    target_fooled = (target_adv_preds != clean_labels)
+    target_fooled = target_adv_preds != clean_labels
 
-    transfer_rate = (surrogate_success & target_fooled).sum().item() / max(surrogate_success.sum().item(), 1)
+    transfer_rate = (surrogate_success & target_fooled).sum().item() / max(
+        surrogate_success.sum().item(), 1
+    )
 
     results = {
         "surrogate_clean_accuracy": surrogate_clean_acc,
@@ -792,12 +817,12 @@ def run_transfer_attack_experiment(
     input_dim: int = 256,
     image_size: int = 16,
     n_outputs: int = 2,
-    attack_methods: List[str] = ["bim", "fgsm", "mim"],
+    attack_methods: list[str] | None = None,
     epsilon: float = 0.1,
     num_iter: int = 10,
     epochs: int = 20,
-    device: torch.device = None
-) -> Dict[str, Any]:
+    device: torch.device = None,
+) -> dict[str, Any]:
     """Run full transfer attack experiment.
 
     Trains a surrogate classical model, generates adversarial examples,
@@ -822,6 +847,9 @@ def run_transfer_attack_experiment(
     Returns:
         Dictionary with results for each attack method
     """
+    if attack_methods is None:
+        attack_methods = ["bim", "fgsm", "mim"]
+
     from .models import ClassicalCNN, ClassicalFNN
     from .training import train_model
 
@@ -831,15 +859,12 @@ def run_transfer_attack_experiment(
     # Create surrogate model
     if surrogate_type.lower() == "cnn":
         surrogate_model = ClassicalCNN(
-            input_channels=1,
-            image_size=image_size,
-            n_outputs=n_outputs
+            input_channels=1, image_size=image_size, n_outputs=n_outputs
         ).to(device)
     else:
-        surrogate_model = ClassicalFNN(
-            input_dim=input_dim,
-            n_outputs=n_outputs
-        ).to(device)
+        surrogate_model = ClassicalFNN(input_dim=input_dim, n_outputs=n_outputs).to(
+            device
+        )
 
     # Train surrogate model
     logger.info(f"Training {surrogate_type.upper()} surrogate model...")
@@ -858,7 +883,7 @@ def run_transfer_attack_experiment(
             attack_method=attack_method,
             epsilon=epsilon,
             num_iter=num_iter,
-            device=device
+            device=device,
         )
         results[attack_method] = attack_results
 
@@ -876,10 +901,9 @@ def run_transfer_attack_experiment(
 # Noise Comparison Experiments (Fig 11 from paper)
 # =============================================================================
 
+
 def add_random_noise(
-    x: torch.Tensor,
-    epsilon: float,
-    noise_type: str = "uniform"
+    x: torch.Tensor, epsilon: float, noise_type: str = "uniform"
 ) -> torch.Tensor:
     """Add random noise to input (non-adversarial baseline).
 
@@ -916,8 +940,8 @@ def evaluate_with_photon_loss(
     model: nn.Module,
     dataloader: torch.utils.data.DataLoader,
     loss_rate: float,
-    device: torch.device = None
-) -> Dict[str, float]:
+    device: torch.device = None,
+) -> dict[str, float]:
     """Evaluate model with simulated photon loss.
 
     Photon loss is modeled by randomly zeroing out features with
@@ -953,7 +977,9 @@ def evaluate_with_photon_loss(
 
             # Renormalize to maintain amplitude encoding property
             norms = torch.norm(data_lossy, dim=-1, keepdim=True)
-            data_lossy = data_lossy / (norms + 1e-8) * torch.norm(data, dim=-1, keepdim=True)
+            data_lossy = (
+                data_lossy / (norms + 1e-8) * torch.norm(data, dim=-1, keepdim=True)
+            )
 
             outputs = model(data_lossy)
             predictions = outputs.argmax(dim=1)
@@ -963,20 +989,17 @@ def evaluate_with_photon_loss(
 
     accuracy = correct / total
 
-    return {
-        "accuracy": accuracy,
-        "loss_rate": loss_rate
-    }
+    return {"accuracy": accuracy, "loss_rate": loss_rate}
 
 
 def compare_noise_vs_adversarial(
     model: nn.Module,
     dataloader: torch.utils.data.DataLoader,
-    epsilon_values: List[float] = [0.01, 0.05, 0.1, 0.15, 0.2],
+    epsilon_values: list[float] | None = None,
     attack_method: str = "bim",
     num_iter: int = 10,
-    device: torch.device = None
-) -> Dict[str, Any]:
+    device: torch.device = None,
+) -> dict[str, Any]:
     """Compare adversarial perturbations vs random noise vs photon loss.
 
     Reproduces Figure 11 from the paper, showing that adversarial
@@ -995,6 +1018,9 @@ def compare_noise_vs_adversarial(
     Returns:
         Results for adversarial, random noise, and photon loss
     """
+    if epsilon_values is None:
+        epsilon_values = [0.01, 0.05, 0.1, 0.15, 0.2]
+
     if device is None:
         device = torch.device("cpu")
 
@@ -1014,7 +1040,7 @@ def compare_noise_vs_adversarial(
         "adversarial": [],
         "random_uniform": [],
         "random_gaussian": [],
-        "photon_loss": []
+        "photon_loss": [],
     }
 
     # First, compute clean accuracy
@@ -1096,10 +1122,7 @@ def compare_noise_vs_adversarial(
 
 
 def create_noisy_quantum_layer(
-    base_circuit,
-    n_photons: int,
-    brightness: float = 1.0,
-    transmittance: float = 1.0
+    base_circuit, n_photons: int, brightness: float = 1.0, transmittance: float = 1.0
 ):
     """Create a quantum layer with photon loss noise model.
 
@@ -1122,8 +1145,7 @@ def create_noisy_quantum_layer(
     # Create experiment with noise model
     experiment = pcvl.Experiment(base_circuit)
     experiment.noise = pcvl.NoiseModel(
-        brightness=brightness,
-        transmittance=transmittance
+        brightness=brightness, transmittance=transmittance
     )
 
     # Create quantum layer with noise
@@ -1131,7 +1153,7 @@ def create_noisy_quantum_layer(
         experiment=experiment,
         n_photons=n_photons,
         amplitude_encoding=True,
-        measurement_strategy=MeasurementStrategy.PROBABILITIES
+        measurement_strategy=MeasurementStrategy.PROBABILITIES,
     )
 
     return layer
@@ -1139,12 +1161,12 @@ def create_noisy_quantum_layer(
 
 def evaluate_with_perceval_noise(
     model_class,
-    model_config: Dict[str, Any],
+    model_config: dict[str, Any],
     dataloader: torch.utils.data.DataLoader,
-    brightness_values: List[float] = [1.0, 0.95, 0.9, 0.85, 0.8],
-    transmittance_values: List[float] = [1.0, 0.95, 0.9, 0.85, 0.8],
-    device: torch.device = None
-) -> Dict[str, Any]:
+    brightness_values: list[float] | None = None,
+    transmittance_values: list[float] | None = None,
+    device: torch.device = None,
+) -> dict[str, Any]:
     """Evaluate model robustness to photon loss using Perceval's noise model.
 
     This is the proper photonic noise experiment using MerLin/Perceval's
@@ -1161,13 +1183,18 @@ def evaluate_with_perceval_noise(
     Returns:
         Accuracy at different noise levels
     """
+    if brightness_values is None:
+        brightness_values = [1.0, 0.95, 0.9, 0.85, 0.8]
+    if transmittance_values is None:
+        transmittance_values = [1.0, 0.95, 0.9, 0.85, 0.8]
+
     if device is None:
         device = torch.device("cpu")
 
     results = {
         "brightness_sweep": {"values": brightness_values, "accuracy": []},
         "transmittance_sweep": {"values": transmittance_values, "accuracy": []},
-        "combined_sweep": []
+        "combined_sweep": [],
     }
 
     # Note: This requires modifying the model to accept noise parameters
@@ -1182,9 +1209,9 @@ def evaluate_with_perceval_noise(
 def run_noise_comparison_experiment(
     model: nn.Module,
     test_loader: torch.utils.data.DataLoader,
-    config: Dict[str, Any],
-    device: torch.device = None
-) -> Dict[str, Any]:
+    config: dict[str, Any],
+    device: torch.device = None,
+) -> dict[str, Any]:
     """Run the full noise vs adversarial comparison experiment.
 
     Reproduces Figure 11 from Lu et al. (2020).
@@ -1218,14 +1245,16 @@ def run_noise_comparison_experiment(
         epsilon_values=epsilon_values,
         attack_method=attack_method,
         num_iter=num_iter,
-        device=device
+        device=device,
     )
 
     # Log summary
     logger.info("\n" + "=" * 60)
     logger.info("Summary: Accuracy at different perturbation levels")
     logger.info("=" * 60)
-    logger.info(f"{'Epsilon':<10} {'Adversarial':<12} {'Uniform':<12} {'Gaussian':<12} {'Photon Loss':<12}")
+    logger.info(
+        f"{'Epsilon':<10} {'Adversarial':<12} {'Uniform':<12} {'Gaussian':<12} {'Photon Loss':<12}"
+    )
     logger.info("-" * 60)
 
     for i, eps in enumerate(epsilon_values):

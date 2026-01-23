@@ -3,12 +3,26 @@
   "experiment": {
     "type": "str",
     "default": "mnist",
-    "choices": ["mnist", "attack", "defense", "ising", "topological", "transfer", "noise", "noise_eval", "transfer_eval", "comparison"],
+    "choices": [
+      "mnist",
+      "attack",
+      "defense",
+      "ising",
+      "topological",
+      "transfer",
+      "noise",
+      "noise_eval",
+      "transfer_eval",
+      "comparison"
+    ],
     "help": "Experiment type. Use noise_eval/transfer_eval for single-run evaluations in scripts."
   },
   "dataset.digits": {
     "type": "list",
-    "default": [1, 9],
+    "default": [
+      1,
+      9
+    ],
     "help": "Digit classes for MNIST classification"
   },
   "dataset.image_size": {
@@ -19,7 +33,16 @@
   "model.type": {
     "type": "str",
     "default": "hybrid_quantum",
-    "choices": ["quantum", "hybrid_quantum", "amplitude_quantum", "amplitude_direct", "ising_quantum", "classical", "cnn", "fnn"],
+    "choices": [
+      "quantum",
+      "hybrid_quantum",
+      "amplitude_quantum",
+      "amplitude_direct",
+      "ising_quantum",
+      "classical",
+      "cnn",
+      "fnn"
+    ],
     "help": "Model type: hybrid_quantum (angle), amplitude_quantum (amplitude encoding), classical baselines"
   },
   "model.n_modes": {
@@ -55,7 +78,13 @@
   "attack.method": {
     "type": "str",
     "default": "bim",
-    "choices": ["fgsm", "bim", "pgd", "mim", "functional"],
+    "choices": [
+      "fgsm",
+      "bim",
+      "pgd",
+      "mim",
+      "functional"
+    ],
     "help": "Attack method: additive (fgsm/bim/pgd/mim) or functional (local phase)"
   },
   "attack.epsilon": {
@@ -77,10 +106,5 @@
     "type": "bool",
     "default": true,
     "help": "Run adversarial attack after training"
-  },
-  "options.generate_figures": {
-    "type": "bool",
-    "default": true,
-    "help": "Generate visualization figures"
   }
 }

@@ -11,7 +11,7 @@ From the paper:
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -19,7 +19,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from .attacks import bim_attack, fgsm_attack, pgd_attack, mim_attack
+from .attacks import bim_attack, fgsm_attack, mim_attack, pgd_attack
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +35,8 @@ def adversarial_training_step(
     num_iter: int = 3,
     alpha: float = None,
     mix_ratio: float = 0.5,
-    device: torch.device = None
-) -> Tuple[float, float, float]:
+    device: torch.device = None,
+) -> tuple[float, float, float]:
     """Single adversarial training step.
 
     Performs the inner maximization (generate adversarial examples)
@@ -66,9 +66,15 @@ def adversarial_training_step(
     # Select attack function
     attack_fn = {
         "fgsm": lambda m, x, y, e: fgsm_attack(m, x, y, e),
-        "bim": lambda m, x, y, e: bim_attack(m, x, y, e, alpha=alpha, num_iter=num_iter),
-        "pgd": lambda m, x, y, e: pgd_attack(m, x, y, e, alpha=alpha, num_iter=num_iter),
-        "mim": lambda m, x, y, e: mim_attack(m, x, y, e, alpha=alpha, num_iter=num_iter),
+        "bim": lambda m, x, y, e: bim_attack(
+            m, x, y, e, alpha=alpha, num_iter=num_iter
+        ),
+        "pgd": lambda m, x, y, e: pgd_attack(
+            m, x, y, e, alpha=alpha, num_iter=num_iter
+        ),
+        "mim": lambda m, x, y, e: mim_attack(
+            m, x, y, e, alpha=alpha, num_iter=num_iter
+        ),
     }.get(attack_method.lower())
 
     if attack_fn is None:
@@ -121,8 +127,8 @@ class AdversarialTrainer:
         model: nn.Module,
         train_loader: DataLoader,
         test_loader: DataLoader,
-        config: Dict[str, Any],
-        device: torch.device = None
+        config: dict[str, Any],
+        device: torch.device = None,
     ):
         """Initialize adversarial trainer.
 
@@ -172,11 +178,8 @@ class AdversarialTrainer:
         }
 
     def train(
-        self,
-        epochs: int,
-        verbose: bool = True,
-        eval_attack: bool = True
-    ) -> Dict[str, Any]:
+        self, epochs: int, verbose: bool = True, eval_attack: bool = True
+    ) -> dict[str, Any]:
         """Train the model with adversarial examples.
 
         Args:
@@ -191,7 +194,7 @@ class AdversarialTrainer:
 
         pbar = tqdm(range(epochs), disable=not verbose)
 
-        for epoch in pbar:
+        for _ in pbar:
             # Training phase
             self.model.train()
             total_loss = 0.0
@@ -203,14 +206,17 @@ class AdversarialTrainer:
                 data, labels = data.to(self.device), labels.to(self.device)
 
                 loss, clean_acc, adv_acc = adversarial_training_step(
-                    self.model, data, labels,
-                    self.optimizer, self.criterion,
+                    self.model,
+                    data,
+                    labels,
+                    self.optimizer,
+                    self.criterion,
                     attack_method=self.attack_method,
                     epsilon=self.epsilon,
                     num_iter=self.num_iter,
                     alpha=self.alpha,
                     mix_ratio=self.mix_ratio,
-                    device=self.device
+                    device=self.device,
                 )
 
                 total_loss += loss
@@ -246,7 +252,7 @@ class AdversarialTrainer:
             "final_adversarial_accuracy": self.history["test_adv_acc"][-1],
         }
 
-    def _evaluate(self, eval_attack: bool = True) -> Tuple[float, float]:
+    def _evaluate(self, eval_attack: bool = True) -> tuple[float, float]:
         """Evaluate model on test set.
 
         Args:
@@ -278,9 +284,15 @@ class AdversarialTrainer:
 
             attack_fn = {
                 "fgsm": lambda m, x, y, e: fgsm_attack(m, x, y, e),
-                "bim": lambda m, x, y, e: bim_attack(m, x, y, e, alpha=self.alpha, num_iter=self.num_iter),
-                "pgd": lambda m, x, y, e: pgd_attack(m, x, y, e, alpha=self.alpha, num_iter=self.num_iter),
-                "mim": lambda m, x, y, e: mim_attack(m, x, y, e, alpha=self.alpha, num_iter=self.num_iter),
+                "bim": lambda m, x, y, e: bim_attack(
+                    m, x, y, e, alpha=self.alpha, num_iter=self.num_iter
+                ),
+                "pgd": lambda m, x, y, e: pgd_attack(
+                    m, x, y, e, alpha=self.alpha, num_iter=self.num_iter
+                ),
+                "mim": lambda m, x, y, e: mim_attack(
+                    m, x, y, e, alpha=self.alpha, num_iter=self.num_iter
+                ),
             }.get(self.attack_method.lower())
 
             for data, labels in self.test_loader:
@@ -307,11 +319,11 @@ class AdversarialTrainer:
 def evaluate_robustness(
     model: nn.Module,
     test_loader: DataLoader,
-    attack_methods: List[str] = ["fgsm", "bim", "pgd"],
-    epsilons: List[float] = [0.01, 0.05, 0.1, 0.2],
+    attack_methods: list[str] | None = None,
+    epsilons: list[float] | None = None,
     num_iter: int = 10,
-    device: torch.device = None
-) -> Dict[str, Dict[float, float]]:
+    device: torch.device = None,
+) -> dict[str, dict[float, float]]:
     """Evaluate model robustness across multiple attacks and epsilon values.
 
     Args:
@@ -325,6 +337,11 @@ def evaluate_robustness(
     Returns:
         Dictionary mapping attack -> epsilon -> accuracy
     """
+    if attack_methods is None:
+        attack_methods = ["fgsm", "bim", "pgd"]
+    if epsilons is None:
+        epsilons = [0.01, 0.05, 0.1, 0.2]
+
     if device is None:
         device = torch.device("cpu")
 

@@ -16,14 +16,14 @@ echo "=== Training Classifiers ==="
 echo "Training quantum classifier (binary)..."
 python "$REPO_ROOT/implementation.py" --paper quantum_adversarial_ml \
     --config configs/train_quantum.json \
-    --outdir outdir/train_quantum
+    --outdir results/train_quantum
 
 # 4-class quantum classifier
 echo ""
 echo "Training quantum classifier (4-class)..."
 python "$REPO_ROOT/implementation.py" --paper quantum_adversarial_ml \
     --config configs/mnist_multi_train.json \
-    --outdir outdir/train_quantum_4class
+    --outdir results/train_quantum_4class
 
 echo ""
-echo "Training curves saved in outdir/"
+echo "Training curves saved in results/"
