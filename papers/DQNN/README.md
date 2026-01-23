@@ -8,6 +8,8 @@ Distributed Photonic Quantum Computing (2025)
 - DOI/ArXiv: [2505.08474v1](https://arxiv.org/html/2505.08474v1)
 - [Original repository](https://github.com/Louisanity/PhotonicQuantumTrain)
 
+We used the code of Jacob Miller the [TorchMPS repository](https://github.com/jemisjoky/TorchMPS).
+
 ## Overview
 
 ### 🎯 Main goal 
@@ -21,9 +23,8 @@ Distributed Photonic Quantum Computing (2025)
 ### Main contributions of the paper
 
 > - Compared to traditional QML methods, the authors explore a way to use a photonic quantum computer to train the classical parameters of a fully classical neural network model.
-> - The main idea driving the project is that fewer quantum parameters need to be trained to obtain all of the classical parameters. They use even less parameters while having better or equal performance compared to classical compression techniques such as pruning and weight sharing.
->- After a noise analysis of the brightness, indistinguishability, second-order correlation and transmittance:
->- “Across all sweeps the worst-case degradation is confined to less than three percentage points, identifying excess multi-photon emission at high brightness as the principal residual error source and demonstrating that the hybrid photonic–classical architecture maintains high-fidelity operation under first-order imperfections realistic for current hardware.”
+> - The main idea driving the project is that fewer quantum parameters need to be trained to obtain all of the classical parameters. That method even less parameters while having better or equal performance compared to classical compression techniques such as pruning and weight sharing.
+>- After a noise analysis of the brightness, indistinguishability, second-order correlation and transmittance: “Across all sweeps the worst-case degradation is confined to less than three percentage points, identifying excess multi-photon emission at high brightness as the principal residual error source and demonstrating that the hybrid photonic–classical architecture maintains high-fidelity operation under first-order imperfections realistic for current hardware.”
 
 ### Their framework
 
@@ -39,7 +40,7 @@ Source: K.-C. Chen, C.-Y. Liu, Y. Shang, F. Burt, and K. K. Leung, “Distribute
 
 ### Difference in framework
 
-With MerLin, it is easier to calculate the gradient of a QuantumLayer. So, our implementations allows the user to optimize the boson samplers with Adam instead of COBYLA which can give results of the same precision way faster. In our experiments, we will use the Adam optimizer in both optimization and it is the one used by default in our implementation. It is still possibile to use COBYLA in our code with a simple parameter change.
+With MerLin, it is easier to calculate the gradient of a QuantumLayer. So, our implementations allows the user to optimize the boson samplers with Adam instead of COBYLA which can give results of the same precision way faster. In our experiments, we will use the Adam optimizer in both optimizations (the MPS layer and the boson samplers) and it is the one used by default in our implementation. It is still possibile to use COBYLA in our code with a simple parameter change.
 
 
 ### Their results
@@ -100,7 +101,7 @@ Here only 100 iterations of training of 5 classical and quantum epochs per itera
 
 ![](results/ablation_graph_with_train.png)
 
-We observed a major difference in our ablation analysis. Indeed as said before the ablation study was not done correctly. Here we generated one random vector per experience (it is the same for each epoch). we observe that MPS may be actually doing all of the work. We are basically obtaining the same results per number of parameter while using or not the boson sampler. The usefulness of quantum in this model is here questioned…
+As mentioned before, we identified a potential issue in the authors’ implementation: in their ablation setup, new random values appear to be generated at every training epoch. In our revised ablation protocol, we instead generate the random numbers once per run and keep them fixed throughout training. Under this setting, we obtain results that are comparable to those achieved with the boson sampler. This suggests that the reported benefit of the quantum component may be sensitive to this implementation choice and should be interpreted with caution as the MPS could be responsible for these results more than the quantum part.
 
 
 ## How to Run
@@ -145,7 +146,7 @@ python implementation.py --paper DQNN --config configs/defaults.json --num_train
 ## Project structure
 - `papers.DQNN.lib/runner.py` — The file to run for every experiment.
 - `papers.DQNN.lib/` — core papers.DQNN.library modules used by scripts.
-  - `TorchMPS/` — Repository to instanciate a MPS tensor module in Torch.
+  - `torchmps/` — Repository to instanciate a MPS tensor module in Torch.
   - `ablation_exp.py`, `bond_dimension_exp.py`, `default_exp.py`- Files containing the function to run the corresponding experiment.
   - `boson_sampler.py` - The file containg the class managing the quantum layers.
   - `classical_utils.py`, `photonic_qt_utils.py` - Files containing utility functions.
@@ -191,4 +192,4 @@ Notes:
 - If `pytest` is not installed: `pip install pytest`.
 
 ## Acknowledgments
-We here used the code of the [TorchMPS repository](https://github.com/jemisjoky/TorchMPS).
+We here used the code of Jacob Miller the [TorchMPS repository](https://github.com/jemisjoky/TorchMPS).

@@ -34,8 +34,7 @@ from papers.DQNN.lib.model import (
 from papers.DQNN.utils.utils import plot_ablation_exp, create_datasets
 import torch.nn.functional as F
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "TorchMPS"))
-from papers.DQNN.lib.torchmps.torchmps import MPS
+from papers.DQNN.lib.torchmps import MPS
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 

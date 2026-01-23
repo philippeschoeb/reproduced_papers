@@ -7,12 +7,8 @@ qubit calculations, and probability-to-weight mapping utilities.
 
 import numpy as np
 import torch
-import sys
-import os
 from typing import List, Tuple
 from papers.DQNN.lib.boson_sampler import BosonSampler
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "TorchMPS"))
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
