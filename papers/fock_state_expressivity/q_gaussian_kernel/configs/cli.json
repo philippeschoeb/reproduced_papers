@@ -2,33 +2,68 @@
   "description": "CLI schema for Quantum Gaussian kernel experiments.",
   "arguments": [
     {
-      "flags": ["--task"],
+      "flags": [
+        "--task"
+      ],
       "help": "Experiment task to run",
       "type": "str",
-      "choices": ["sampler", "classify"],
+      "choices": [
+        "sampler",
+        "classify"
+      ],
       "default": null,
-      "apply": {"kind": "config_path", "path": "experiment.task"}
+      "apply": {
+        "kind": "config_path",
+        "path": "experiment.task"
+      }
     },
     {
-      "flags": ["--manifest"],
+      "flags": [
+        "--manifest"
+      ],
       "help": "Checkpoint manifest to use for classification runs",
       "type": "path",
       "default": null,
-      "apply": {"kind": "config_path", "path": "classification.manifest"}
+      "apply": {
+        "kind": "config_path",
+        "path": "classification.manifest"
+      }
     },
     {
-      "flags": ["--checkpoint-dir"],
+      "flags": [
+        "--previous-run"
+      ],
+      "help": "Previous run directory containing model outputs for classification",
+      "type": "path",
+      "default": null,
+      "apply": {
+        "kind": "config_path",
+        "path": "classification.previous_run"
+      }
+    },
+    {
+      "flags": [
+        "--checkpoint-dir"
+      ],
       "help": "Directory for storing sampler checkpoints",
       "type": "path",
       "default": null,
-      "apply": {"kind": "config_path", "path": "sampler.checkpoint_dir"}
+      "apply": {
+        "kind": "config_path",
+        "path": "sampler.checkpoint_dir"
+      }
     },
     {
-      "flags": ["--num-runs"],
+      "flags": [
+        "--num-runs"
+      ],
       "help": "Number of runs per photon count during sampling",
       "type": "int",
       "default": null,
-      "apply": {"kind": "config_path", "path": "training.num_runs"}
+      "apply": {
+        "kind": "config_path",
+        "path": "training.num_runs"
+      }
     }
   ]
 }

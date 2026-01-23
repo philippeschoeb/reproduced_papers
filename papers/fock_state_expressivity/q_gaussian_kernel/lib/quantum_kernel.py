@@ -6,7 +6,7 @@ import numpy as np
 import perceval as pcvl
 import torch
 import torch.nn as nn
-from merlin import OutputMappingStrategy, QuantumLayer
+from merlin import MeasurementStrategy, QuantumLayer
 
 
 def _ps_random():
@@ -202,7 +202,7 @@ def build_quantum_kernel(num_photons: int, cfg: dict) -> nn.Module:
         input_parameters=["δ"],
         input_state=input_state,
         no_bunching=cfg.get("no_bunching", False),
-        output_mapping_strategy=OutputMappingStrategy.NONE,
+        measurement_strategy=MeasurementStrategy.PROBABILITIES,
     )
 
     linear = nn.Linear(quantum_layer.output_size, 1)

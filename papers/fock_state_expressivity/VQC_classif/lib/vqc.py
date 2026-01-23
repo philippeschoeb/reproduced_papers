@@ -8,13 +8,12 @@ All circuits are designed to work with MerLin quantum machine learning framework
 
 import random
 from math import comb
-from pathlib import Path
 
 import numpy as np
 import perceval as pcvl
 import torch
 import torch.nn as nn
-from merlin import OutputMappingStrategy, QuantumLayer
+from merlin import QuantumLayer
 
 
 def create_vqc_spiral(m, input_size, frequency=1):
@@ -208,9 +207,7 @@ def get_vqc(
     no_bunching=False,
     activation="none",
     circuit="bs_mesh",
-    visualize=False,
     scale_type="learned",
-    visualize_dir: str | None = "results",
 ):
     """
     Create a complete variational quantum classifier with specified configuration.
@@ -222,7 +219,6 @@ def get_vqc(
         no_bunching (bool): Whether to disable photon bunching
         activation (str): Activation function ("none", "sigmoid", "softmax")
         circuit (str): Circuit type ("bs_mesh", "general", "bs_basic", "spiral")
-        visualize (bool): Whether to save circuit visualization
         scale_type (str): Input scaling method
 
     Returns:
@@ -243,11 +239,6 @@ def get_vqc(
     else:
         raise ValueError(f"Unknown circuit {circuit}")
 
-    if visualize and visualize_dir:
-        viz_path = Path(visualize_dir) / f"circuit_{circuit}.png"
-        viz_path.parent.mkdir(parents=True, exist_ok=True)
-        pcvl.pdisplay_to_file(vqc_circuit, str(viz_path))
-
     input_layer = ScaleLayer(input_size, scale_type=scale_type)
 
     n_photons = torch.sum(torch.tensor(initial_state))
@@ -262,7 +253,6 @@ def get_vqc(
 
     vqc = QuantumLayer(
         input_size=input_size,
-        output_size=output_size,
         circuit=vqc_circuit,
         trainable_parameters=[
             p.name for p in vqc_circuit.get_parameters() if not p.name.startswith("px")
@@ -270,7 +260,6 @@ def get_vqc(
         input_parameters=["px"],
         input_state=initial_state,  # [1, 0] * 3 for example
         no_bunching=no_bunching,
-        output_mapping_strategy=OutputMappingStrategy.NONE,
     )
 
     # The Linear layer acts as the observable and it makes sure the output is 1 dimensional
