@@ -29,7 +29,7 @@ from typing import Optional, Callable
 import torch
 from torch import Tensor, nn
 
-from torchmps.mps_base import (
+from .mps_base import (
     contract_matseq,
     near_eye_init,
     normal_init,

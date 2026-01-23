@@ -13,10 +13,6 @@ from papers.DQNN.tests.test_boson_sampler import bs_1, bs_2
 from papers.DQNN.utils.utils import create_datasets
 import torch.nn as nn
 import torch
-import sys
-import os
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "torchmps"))
 from papers.DQNN.lib.torchmps import MPS
 
 
