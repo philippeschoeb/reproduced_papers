@@ -53,20 +53,6 @@
       "apply": {"kind": "custom_callable", "callable": "photonic_QCNN.lib.runtime_cli.apply_n_runs"}
     },
     {
-      "flags": ["--figure4", "--readout"],
-      "help": "Run the Figure 4 readout analysis",
-      "action": "store_true",
-      "default": false,
-      "apply": {"kind": "config_path", "path": "figure4", "value": true}
-    },
-    {
-      "flags": ["--figure12"],
-      "help": "Run the Figure 12 simulation pipeline",
-      "action": "store_true",
-      "default": false,
-      "apply": {"kind": "config_path", "path": "figure12", "value": true}
-    },
-    {
       "flags": ["--max-iter", "--max_iter"],
       "help": "Limit number of two-fold readout experiments (Figure 4)",
       "type": "int",
