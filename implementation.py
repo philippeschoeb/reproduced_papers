@@ -15,7 +15,7 @@ from runtime_lib.cli import build_cli_parser
 PAPERS_DIRNAME = "papers"
 PROJECT_MARKERS = (
     Path("configs") / "defaults.json",
-    Path("configs") / "cli.json",
+    Path("cli.json"),
     Path("lib") / "runner.py",
 )
 GLOBAL_CLI_SCHEMA = Path("runtime_lib") / "global_cli.json"
@@ -31,7 +31,7 @@ def _load_json(path: Path) -> dict[str, object]:
 
 
 def _build_project_parser(project_dir: Path, repo_root: Path) -> argparse.ArgumentParser:
-    cli_schema_path = project_dir / "configs" / "cli.json"
+    cli_schema_path = project_dir / "cli.json"
     cli_schema = _load_json(cli_schema_path)
     cli_schema.setdefault("arguments", [])
     global_schema_path = repo_root / GLOBAL_CLI_SCHEMA
@@ -60,7 +60,7 @@ def _is_project_dir(path: Path) -> bool:
 
 
 def _iter_project_dirs(repo_root: Path) -> list[Path]:
-    """Return all project dirs (configs/defaults.json, configs/cli.json, lib/runner.py).
+    """Return all project dirs (configs/defaults.json, cli.json, lib/runner.py).
 
     Searches recursively under `papers/` (to capture nested subprojects such as
     fock_state_expressivity/*) and also at the repository root.
@@ -125,7 +125,7 @@ def _require_project_dir(
         )
     if not _is_project_dir(project_dir):
         parser.error(
-            "Invalid paper directory (expected configs/defaults.json, configs/cli.json, "
+            "Invalid paper directory (expected configs/defaults.json, cli.json, "
             f"and lib/runner.py): {project_dir}"
         )
     return project_dir.resolve()
@@ -161,7 +161,7 @@ def main(argv: list[str] | None = None) -> int:
         dest="list_papers",
         help=(
             "List available paper folders that contain configs/defaults.json, "
-            "configs/cli.json, and lib/runner.py"
+            "cli.json, and lib/runner.py"
         ),
     )
     parser.add_argument(
@@ -209,7 +209,7 @@ def main(argv: list[str] | None = None) -> int:
             project_dir = _find_enclosing_project_dir(Path.cwd(), repo_root)
         if project_dir and not _is_project_dir(project_dir):
             print(
-                "Error: invalid paper directory (expected configs/defaults.json, configs/cli.json, "
+                "Error: invalid paper directory (expected configs/defaults.json, cli.json, "
                 f"and lib/runner.py): {project_dir}",
                 file=sys.stderr,
             )

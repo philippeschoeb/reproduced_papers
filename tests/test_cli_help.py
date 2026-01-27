@@ -45,3 +45,9 @@ def test_help_with_invalid_paper_errors() -> None:
     assert result.returncode == 2
     assert "Error: unknown paper 'xxxx'" in result.stderr
     assert result.stdout.strip() == ""
+
+
+def test_list_papers_includes_qorc() -> None:
+    result = _run_cli("--list-papers")
+    assert result.returncode == 0
+    assert "papers/QORC" in result.stdout
