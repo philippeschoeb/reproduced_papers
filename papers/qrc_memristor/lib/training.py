@@ -1,0 +1,237 @@
+import torch
+import numpy as np
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+from sklearn.metrics import mean_squared_error
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+from lib.datasets import generate_narma
+
+
+def train_sequence(model, x_seq, y_seq, model_name=None, n_epochs=400, lr=0.01, memory=True):
+    # opt = torch.optim.Adam(model.parameters(), lr=lr)
+    # Freezing parameters for Time Series tasks
+    opt = torch.optim.Adam([p for p in model.parameters() if p.requires_grad], lr=lr)
+
+    pbar = tqdm(range(n_epochs), desc=f"Training {model_name}")
+    losses = []
+    for epoch in pbar:
+        model.train()
+        if memory:
+            model.reset_feedback()
+
+        outs = []
+        for t in range(x_seq.shape[0]):
+            out_t = model(x_seq[t:t+1])  # batch=1, time unrolled
+            outs.append(out_t)
+
+        outs = torch.cat(outs, dim=0)     # (T, out_dim)
+
+        pred = outs[:, 0]
+        loss = torch.mean((pred - y_seq.squeeze())**2)
+        # loss = torch.mean(pred - y_seq.squeeze())
+        loss = loss.real
+        losses.append(loss)
+
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+
+    return {'losses': losses}
+
+
+def R_to_theta(R, eps=1e-6):
+    # R can be scalar tensor or (batch,1); clamp avoids NaNs
+    R = torch.clamp(R, eps, 1.0 - eps)
+    return 2.0 * torch.acos(torch.sqrt(R))
+
+
+def encode_phase(x, eps=1e-7):
+    x = torch.clamp(x, eps, 1.0 - eps)
+
+    # For non-linear task
+    # phi = 2.0 * torch.acos(torch.sqrt(x))
+    # For NARMA
+    phi = 2.0 * torch.acos(x)
+
+    return phi
+
+
+def extract_features_sequence(model, x_seq, memory=True, device=None):
+    model.eval()
+    if memory:
+        model.reset_feedback()
+
+    outs = []
+    with torch.no_grad():
+        for t in range(x_seq.shape[0]):
+            x_t = x_seq[t:t+1]
+            if device is not None:
+                x_t = x_t.to(device)
+            out_t = model(x_t)
+            outs.append(out_t.detach().cpu())
+
+    return torch.cat(outs, dim=0)
+
+
+def fit_readout_mse(X_feat, y, split=0.9):
+    """
+    X_feat: (N, D) torch tensor
+    y: (N,)   torch tensor
+    """
+    N = y.shape[0]
+    s = int(split * N)
+
+    Xtr, Xte = X_feat[:s], X_feat[s:]
+    ytr, yte = y[:s], y[s:]
+
+    Xtr_ = torch.cat([Xtr, torch.ones(Xtr.shape[0], 1)], dim=1)
+    Xte_ = torch.cat([Xte, torch.ones(Xte.shape[0], 1)], dim=1)
+
+    w = torch.linalg.lstsq(Xtr_, ytr).solution
+
+    y_pred_te = Xte_ @ w
+    mse = torch.mean((y_pred_te - yte) ** 2).item()
+
+    return mse
+
+
+def get_param_snapshot(model):
+    return {name: p.detach().cpu().clone() for name, p in model.named_parameters() if p.requires_grad}
+
+
+def split_washout_train_test(x, y, washout=20, train=480):
+    """
+    x,y are (N,1).
+
+    Returns:
+        washout slices, (x_train,y_train), (x_test,y_test).
+    """
+    x_wash, y_wash = x[:washout], y[:washout]
+    x_train, y_train = x[washout:washout+train], y[washout:washout+train]
+    x_test, y_test = x[washout+train:], y[washout+train:]
+
+    return x_wash, y_wash, x_train, y_train, x_test, y_test
+
+
+def collect_reservoir_features(model, x_full):
+    """
+    Runs the reservoir on the full input stream.
+    Optimized to use internal model loops if available.
+    """
+    model.eval()
+    model.reset_feedback()
+
+    # Ensure x_full is (Batch, Time, Feat) or (Time, Feat)
+    if x_full.dim() == 2:
+        x_in = x_full.unsqueeze(0)  # Add batch dim -> (1, T, 1)
+    else:
+        x_in = x_full
+
+    with torch.no_grad():
+        # Call model once on the full sequence
+        # The model I provided returns (Batch, Time, Output_Dim)
+        out_seq = model(x_in)
+
+        # Remove batch dim and return (Time, Output_Dim)
+    return out_seq.squeeze(0).cpu()
+
+
+def fit_readout_narma(R_tr, y_tr, R_te, y_te, lam=1e-6):
+    """
+    Ridge regression readout with bias.
+    Inputs are torch tensors.
+    Returns: w, b, train_mse, test_mse, yhat_tr, yhat_te
+    """
+    if y_tr.dim() == 1:
+        y_tr = y_tr.view(-1, 1)
+    if y_te.dim() == 1:
+        y_te = y_te.view(-1, 1)
+
+    device = R_tr.device
+    dtype = R_tr.dtype
+
+    # add bias
+    Rtr_ = torch.cat([R_tr, torch.ones(R_tr.shape[0], 1, device=device, dtype=dtype)], dim=1)
+    Rte_ = torch.cat([R_te, torch.ones(R_te.shape[0], 1, device=device, dtype=dtype)], dim=1)
+
+    D = Rtr_.shape[1]
+    I = torch.eye(D, device=device, dtype=dtype)
+    I[-1, -1] = 0.0  # don't regularize bias
+
+    w_full = torch.linalg.solve(Rtr_.T @ Rtr_ + lam * I, Rtr_.T @ y_tr)  # (D,1)
+
+    w = w_full[:-1, :]      # (D-1,1)
+    b = w_full[-1, :]       # (1,)
+
+    yhat_tr = (Rtr_ @ w_full).squeeze(1)
+    yhat_te = (Rte_ @ w_full).squeeze(1)
+
+    train_mse = torch.mean((yhat_tr - y_tr.squeeze(1)) ** 2).item()
+    test_mse = torch.mean((yhat_te - y_te.squeeze(1)) ** 2).item()
+
+    return w.squeeze(1), b.squeeze(0), train_mse, test_mse, yhat_tr, yhat_te
+
+
+def narma_framework(model, x, y, washout=20, train=480):
+    x_w, y_w, x_tr, y_tr, x_te, y_te = split_washout_train_test(x, y, washout=washout, train=train)
+
+    # Run reservoir once on FULL stream
+    R_all = collect_reservoir_features(model, x)  # (N, D)
+
+    # Slice features with EXACT same indices
+    R_tr = R_all[washout:washout + train]
+    R_te = R_all[washout + train:]
+
+    # Fit readout on training only, evaluate on test
+    w, b, train_mse, test_mse, yhat_tr, yhat_te = fit_readout_narma(R_tr, y_tr, R_te, y_te)
+
+    print(f"Train MSE: {train_mse:.6f}")
+    print(f"Test  MSE: {test_mse:.6f}")
+
+    return train_mse, test_mse, y_te.detach().cpu().numpy().flatten(), yhat_te.detach().cpu().numpy().flatten()
+
+
+def run_narma_multiple(model_builder,
+                       n_runs=20,
+                       N=1000,
+                       washout=20,
+                       train=480,
+                       base_seed=0,
+                       device="cpu",):
+    test_mses = []
+
+    for i in range(n_runs):
+        seed = base_seed + i
+
+        # 1) generate new NARMA sequence
+        x, y, _ = generate_narma(data_size=N, seed=seed, device=device)
+
+        # 2) fresh model (same architecture, same fixed phases)
+        model = model_builder().to(device)
+
+        # 3) run pipeline
+        _, test_mse, y_target, y_pred = narma_framework(
+            model, x, y, washout=washout, train=train
+        )
+
+        test_mses.append(test_mse)
+        print(f"Run {i+1:02d}/{n_runs} — test MSE = {test_mse:.6f}")
+
+        best_mse = 0.1
+        if test_mse < best_mse:
+            best_mse = test_mse
+            best_y_target = y_target
+            best_y_pred = y_pred
+
+    test_mses = np.array(test_mses)
+
+    mean_mse = test_mses.mean()
+    std_mse = test_mses.std()
+
+    print("\n=== NARMA results ===")
+    print(f"Runs: {n_runs}")
+    print(f"Mean test MSE: {mean_mse:.6f}")
+    print(f"Std  test MSE: {std_mse:.6f}")
+
+    return mean_mse, std_mse, test_mses, best_y_target, best_y_pred
