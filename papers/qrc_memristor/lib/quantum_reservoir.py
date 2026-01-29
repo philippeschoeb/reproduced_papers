@@ -1,12 +1,29 @@
 import merlin as ml
 import perceval as pcvl
 import perceval.components as comp
+import torch
+import numpy as np
+from typing import Optional, Union, List, Tuple
 from lib.feedback import FeedbackLayer, FeedbackLayerNARMA
-from lib.training import *
+from lib.training import encode_phase, R_to_theta
 
 
 class QuantumReservoirFeedback(torch.nn.Module):
-    def __init__(self, input_dim=1, n_modes=3, memory=5):
+    """
+    A Quantum Reservoir Computing model with a feedback loop mechanism.
+    This model uses a photonic quantum circuit where one MerLin input encodes the data and another MerLin input encodes
+    the feedback state from the previous time step (mimicking the memristive effect).
+    """
+
+    def __init__(self, input_dim: int = 1, n_modes: int = 3, memory: int = 5):
+        """
+        Initialize the Quantum Reservoir with Feedback.
+
+        Args:
+            input_dim (int, optional): Dimension of the input data. Defaults to 1.
+            n_modes (int, optional): Number of modes (qumodes) in the photonic circuit. Defaults to 3.
+            memory (int, optional): Size/depth of the feedback memory buffer. Defaults to 5.
+        """
         super().__init__()
 
         self.n_modes = n_modes
@@ -26,8 +43,20 @@ class QuantumReservoirFeedback(torch.nn.Module):
 
         self.feedback = FeedbackLayer(memory_size=memory)
 
-    def gen_circuit(self, n_modes):
-        """Generate quantum circuit with feedback input"""
+    def gen_circuit(self, n_modes: int) -> pcvl.Circuit:
+        """
+        Generates the Perceval quantum circuit structure for the reservoir.
+        The circuit includes:
+        1. An encoding section for the input data (px_0).
+        2. A memory/feedback section for the feedback signal (px_1).
+        3. A measurement/mixing section with trainable parameters (theta).
+
+        Args:
+            n_modes (int): Number of modes in the circuit.
+
+        Returns:
+            pcvl.Circuit: The constructed quantum circuit.
+        """
         # Encoding with input data (px_0)
         phi_enc = pcvl.P(f"px_{0}")
         u_enc_u_1 = (pcvl.Circuit(2, name="U_enc, U_1")
@@ -56,7 +85,17 @@ class QuantumReservoirFeedback(torch.nn.Module):
 
         return quantum_circ
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the model for a single time step or a batch of independent inputs.
+        Note: This method handles the feedback state internal update.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, input_dim).
+
+        Returns:
+            torch.Tensor: Output probability distribution from the quantum layer.
+        """
         batch_size = x.shape[0]
 
         # If we have no R yet, start from R=0.5 (balanced) like typical initialization
@@ -81,13 +120,29 @@ class QuantumReservoirFeedback(torch.nn.Module):
 
         return out
 
-    def reset_feedback(self):
-        """Call this at the start of each sequence/epoch"""
+    def reset_feedback(self) -> None:
+        """
+        Resets the internal feedback memory state.
+        Should be called at the start of each new sequence or epoch.
+        """
         self.feedback.reset()
 
 
 class QuantumReservoirFeedbackTimeSeries(torch.nn.Module):
-    def __init__(self, input_dim=1, n_modes=3, memory=5):
+    """
+    A Quantum Reservoir Computing model optimized for Time Series tasks (e.g., NARMA).
+    It processes an entire sequence in a loop within the forward pass, maintaining the feedback state across time steps.
+    """
+
+    def __init__(self, input_dim: int = 1, n_modes: int = 3, memory: int = 5):
+        """
+        Initialize the Time Series Quantum Reservoir.
+
+        Args:
+            input_dim (int, optional): Dimension of the input data. Defaults to 1.
+            n_modes (int, optional): Number of modes in the circuit. Defaults to 3.
+            memory (int, optional): Memory depth for the feedback calculation. Defaults to 5.
+        """
         super().__init__()
         self.n_modes = n_modes
         self.circuit = self.gen_circuit(n_modes)
@@ -104,7 +159,16 @@ class QuantumReservoirFeedbackTimeSeries(torch.nn.Module):
 
         self.feedback = FeedbackLayerNARMA(memory_size=memory)
 
-    def gen_circuit(self, n_modes):
+    def gen_circuit(self, n_modes: int) -> pcvl.Circuit:
+        """
+        Generates the Perceval quantum circuit structure.
+
+        Args:
+            n_modes (int): Number of modes.
+
+        Returns:
+            pcvl.Circuit: The constructed quantum circuit.
+        """
         # Encoding with input data (px_0)
         phi_enc = pcvl.P(f"px_{0}")
         u_enc = (pcvl.Circuit(2, name="U_enc")
@@ -124,10 +188,17 @@ class QuantumReservoirFeedbackTimeSeries(torch.nn.Module):
 
         return quantum_circ
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        x shape: (batch_size, sequence_length, input_dim)
-        or (sequence_length, input_dim) if batch_size=1
+        Processes an entire time series sequence.
+        Iterates through the sequence dimension, updating the reservoir state step-by-step using the feedback mechanism.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, sequence_length, input_dim)
+                              or (sequence_length, input_dim).
+
+        Returns:
+            torch.Tensor: The sequence of output states, shape (batch_size, sequence_length, output_dim).
         """
         if x.dim() == 2:
             x = x.unsqueeze(0)
@@ -166,18 +237,28 @@ class QuantumReservoirFeedbackTimeSeries(torch.nn.Module):
 
         return torch.stack(outputs, dim=1)
 
-    def reset_feedback(self):
+    def reset_feedback(self) -> None:
+        """
+        Resets the internal feedback memory.
+        """
         self.feedback.reset()
 
 
 class QuantumReservoirNoMem(torch.nn.Module):
     """
-    Quantum reservoir baseline with:
-    - input: x -> px_0
-    - no feedback loop
-    - memristor phase is a trainable parameter (phi_mem)
+    A baseline Quantum Reservoir model WITHOUT memory/feedback.
+    Uses a standard feedforward quantum circuit where the "memory" component is replaced by a static or trainable phase
+    shift.
     """
-    def __init__(self, input_dim=1, n_modes=3):
+
+    def __init__(self, input_dim: int = 1, n_modes: int = 3):
+        """
+        Initialize the No-Memory Quantum Reservoir.
+
+        Args:
+            input_dim (int, optional): Dimension of the input data. Defaults to 1.
+            n_modes (int, optional): Number of modes in the circuit. Defaults to 3.
+        """
         super().__init__()
         self.n_modes = n_modes
 
@@ -193,7 +274,16 @@ class QuantumReservoirNoMem(torch.nn.Module):
             no_bunching=True
         )
 
-    def gen_circuit(self, n_modes):
+    def gen_circuit(self, n_modes: int) -> pcvl.Circuit:
+        """
+        Generates the circuit for the no-memory baseline.
+
+        Args:
+            n_modes (int): Number of modes.
+
+        Returns:
+            pcvl.Circuit: The constructed quantum circuit.
+        """
         # Encoding with input data (px_0)
         phi_enc = pcvl.P("px_0")
         u_enc_u_1 = (pcvl.Circuit(2, name="U_enc, U_1")
@@ -206,7 +296,7 @@ class QuantumReservoirNoMem(torch.nn.Module):
         u_mem = (pcvl.Circuit(2, name="U_mem_static")
                  .add((0, 1), comp.BS())
                  # .add(0, comp.PS(phi=pcvl.P("theta_2")))
-                 .add(0, comp.PS(phi=np.pi/2))
+                 .add(0, comp.PS(phi=np.pi / 2))
                  .add((0, 1), comp.BS()))
 
         # Measurement circuit
@@ -223,7 +313,14 @@ class QuantumReservoirNoMem(torch.nn.Module):
 
         return quantum_circ
 
-    def forward(self, x):
-        # x shape: (batch, 1)
-        return self.quantum_layer(x)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass for the no-memory model.
 
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch, input_dim).
+
+        Returns:
+            torch.Tensor: Output probability distribution.
+        """
+        return self.quantum_layer(x)

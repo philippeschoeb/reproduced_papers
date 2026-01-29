@@ -5,31 +5,65 @@ from tqdm import tqdm
 from sklearn.metrics import mean_squared_error
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
-from lib.datasets import generate_narma
+from utils.datasets import generate_narma
+
+from typing import Optional, Dict, List, Any
+import torch
+from tqdm import tqdm
 
 
-def train_sequence(model, x_seq, y_seq, model_name=None, n_epochs=400, lr=0.01, memory=True):
-    # opt = torch.optim.Adam(model.parameters(), lr=lr)
-    # Freezing parameters for Time Series tasks
+def train_sequence(
+        model: torch.nn.Module,
+        x_seq: torch.Tensor,
+        y_seq: torch.Tensor,
+        model_name: Optional[str] = None,
+        n_epochs: int = 400,
+        lr: float = 0.01,
+        memory: bool = True
+) -> Dict[str, List[torch.Tensor]]:
+    """
+    Trains a model on a temporal sequence. This function iterates through the sequence time-step by time-step,
+    accumulates predictions, computes the Mean Squared Error (MSE) against the target sequence,
+    and updates the model parameters.
+
+    Args:
+        model (torch.nn.Module): The PyTorch model to be trained. It must implement
+            a `reset_feedback()` method if `memory` is set to True.
+        x_seq (torch.Tensor): The input sequence tensor. Expected shape is usually
+            (Time, Batch, Features) or (Time, Features).
+        y_seq (torch.Tensor): The target sequence tensor.
+        model_name (Optional[str], optional): A label for the model to display
+            in the progress bar. Defaults to None.
+        n_epochs (int, optional): The number of training epochs. Defaults to 400.
+        lr (float, optional): The learning rate for the Adam optimizer. Defaults to 0.01.
+        memory (bool, optional): If True, calls `model.reset_feedback()` at the
+            start of each epoch. Defaults to True.
+
+    Returns:
+        Dict[str, List[torch.Tensor]]: A dictionary containing training statistics.
+            - 'losses': A list of loss values (0-d tensors) recorded at each epoch.
+    """
     opt = torch.optim.Adam([p for p in model.parameters() if p.requires_grad], lr=lr)
 
-    pbar = tqdm(range(n_epochs), desc=f"Training {model_name}")
+    pbar = tqdm(range(n_epochs), desc=f"Training {model_name}" if model_name else "Training")
     losses = []
+
     for epoch in pbar:
         model.train()
         if memory:
-            model.reset_feedback()
+            if hasattr(model, 'reset_feedback'):
+                model.reset_feedback()
+            else:
+                raise AttributeError("Memory=True but model has no 'reset_feedback' method.")
 
         outs = []
         for t in range(x_seq.shape[0]):
-            out_t = model(x_seq[t:t+1])  # batch=1, time unrolled
+            out_t = model(x_seq[t:t + 1])
             outs.append(out_t)
 
-        outs = torch.cat(outs, dim=0)     # (T, out_dim)
-
+        outs = torch.cat(outs, dim=0)
         pred = outs[:, 0]
-        loss = torch.mean((pred - y_seq.squeeze())**2)
-        # loss = torch.mean(pred - y_seq.squeeze())
+        loss = torch.mean((pred - y_seq.squeeze()) ** 2)
         loss = loss.real
         losses.append(loss)
 
@@ -37,16 +71,21 @@ def train_sequence(model, x_seq, y_seq, model_name=None, n_epochs=400, lr=0.01, 
         loss.backward()
         opt.step()
 
+        pbar.set_postfix({"loss": f"{loss.item():.6f}"})
+
     return {'losses': losses}
 
 
-def R_to_theta(R, eps=1e-6):
-    # R can be scalar tensor or (batch,1); clamp avoids NaNs
+from typing import Tuple, Dict, Callable, Optional, List
+import torch
+import numpy as np
+
+def R_to_theta(R: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
     R = torch.clamp(R, eps, 1.0 - eps)
     return 2.0 * torch.acos(torch.sqrt(R))
 
 
-def encode_phase(x, eps=1e-7):
+def encode_phase(x: torch.Tensor, eps: float = 1e-7) -> torch.Tensor:
     x = torch.clamp(x, eps, 1.0 - eps)
 
     # For non-linear task
@@ -57,7 +96,12 @@ def encode_phase(x, eps=1e-7):
     return phi
 
 
-def extract_features_sequence(model, x_seq, memory=True, device=None):
+def extract_features_sequence(
+        model: torch.nn.Module,
+        x_seq: torch.Tensor,
+        memory: bool = True,
+        device: Optional[str] = None
+) -> torch.Tensor:
     model.eval()
     if memory:
         model.reset_feedback()
@@ -74,7 +118,7 @@ def extract_features_sequence(model, x_seq, memory=True, device=None):
     return torch.cat(outs, dim=0)
 
 
-def fit_readout_mse(X_feat, y, split=0.9):
+def fit_readout_mse(X_feat: torch.Tensor, y: torch.Tensor, split: float = 0.9) -> float:
     """
     X_feat: (N, D) torch tensor
     y: (N,)   torch tensor
@@ -96,11 +140,16 @@ def fit_readout_mse(X_feat, y, split=0.9):
     return mse
 
 
-def get_param_snapshot(model):
+def get_param_snapshot(model: torch.nn.Module) -> Dict[str, torch.Tensor]:
     return {name: p.detach().cpu().clone() for name, p in model.named_parameters() if p.requires_grad}
 
 
-def split_washout_train_test(x, y, washout=20, train=480):
+def split_washout_train_test(
+        x: torch.Tensor,
+        y: torch.Tensor,
+        washout: int = 20,
+        train: int = 480
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     x,y are (N,1).
 
@@ -114,7 +163,7 @@ def split_washout_train_test(x, y, washout=20, train=480):
     return x_wash, y_wash, x_train, y_train, x_test, y_test
 
 
-def collect_reservoir_features(model, x_full):
+def collect_reservoir_features(model: torch.nn.Module, x_full: torch.Tensor) -> torch.Tensor:
     """
     Runs the reservoir on the full input stream.
     Optimized to use internal model loops if available.
@@ -137,7 +186,13 @@ def collect_reservoir_features(model, x_full):
     return out_seq.squeeze(0).cpu()
 
 
-def fit_readout_narma(R_tr, y_tr, R_te, y_te, lam=1e-6):
+def fit_readout_narma(
+        R_tr: torch.Tensor,
+        y_tr: torch.Tensor,
+        R_te: torch.Tensor,
+        y_te: torch.Tensor,
+        lam: float = 1e-6
+) -> Tuple[torch.Tensor, torch.Tensor, float, float, torch.Tensor, torch.Tensor]:
     """
     Ridge regression readout with bias.
     Inputs are torch tensors.
@@ -173,17 +228,20 @@ def fit_readout_narma(R_tr, y_tr, R_te, y_te, lam=1e-6):
     return w.squeeze(1), b.squeeze(0), train_mse, test_mse, yhat_tr, yhat_te
 
 
-def narma_framework(model, x, y, washout=20, train=480):
+def narma_framework(
+        model: torch.nn.Module,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        washout: int = 20,
+        train: int = 480
+) -> Tuple[float, float, np.ndarray, np.ndarray]:
     x_w, y_w, x_tr, y_tr, x_te, y_te = split_washout_train_test(x, y, washout=washout, train=train)
 
-    # Run reservoir once on FULL stream
-    R_all = collect_reservoir_features(model, x)  # (N, D)
+    R_all = collect_reservoir_features(model, x)
 
-    # Slice features with EXACT same indices
     R_tr = R_all[washout:washout + train]
     R_te = R_all[washout + train:]
 
-    # Fit readout on training only, evaluate on test
     w, b, train_mse, test_mse, yhat_tr, yhat_te = fit_readout_narma(R_tr, y_tr, R_te, y_te)
 
     print(f"Train MSE: {train_mse:.6f}")
@@ -192,14 +250,20 @@ def narma_framework(model, x, y, washout=20, train=480):
     return train_mse, test_mse, y_te.detach().cpu().numpy().flatten(), yhat_te.detach().cpu().numpy().flatten()
 
 
-def run_narma_multiple(model_builder,
-                       n_runs=20,
-                       N=1000,
-                       washout=20,
-                       train=480,
-                       base_seed=0,
-                       device="cpu",):
+def run_narma_multiple(
+        model_builder: Callable[[], torch.nn.Module],
+        n_runs: int = 20,
+        N: int = 1000,
+        washout: int = 20,
+        train: int = 480,
+        base_seed: int = 0,
+        device: str = "cpu"
+) -> Tuple[float, float, np.ndarray, np.ndarray, np.ndarray]:
     test_mses = []
+
+    best_mse = 1.0e9
+    best_y_target = np.array([])
+    best_y_pred = np.array([])
 
     for i in range(n_runs):
         seed = base_seed + i
@@ -218,20 +282,19 @@ def run_narma_multiple(model_builder,
         test_mses.append(test_mse)
         print(f"Run {i+1:02d}/{n_runs} — test MSE = {test_mse:.6f}")
 
-        best_mse = 0.1
         if test_mse < best_mse:
             best_mse = test_mse
             best_y_target = y_target
             best_y_pred = y_pred
 
-    test_mses = np.array(test_mses)
+    test_mses_arr = np.array(test_mses)
 
-    mean_mse = test_mses.mean()
-    std_mse = test_mses.std()
+    mean_mse = test_mses_arr.mean()
+    std_mse = test_mses_arr.std()
 
     print("\n=== NARMA results ===")
     print(f"Runs: {n_runs}")
     print(f"Mean test MSE: {mean_mse:.6f}")
     print(f"Std  test MSE: {std_mse:.6f}")
 
-    return mean_mse, std_mse, test_mses, best_y_target, best_y_pred
+    return mean_mse, std_mse, test_mses_arr, best_y_target, best_y_pred

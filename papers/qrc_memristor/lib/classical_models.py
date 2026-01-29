@@ -1,30 +1,47 @@
 import torch
 import torch.nn as nn
+from typing import Optional
 
 
 class ClassicalBenchmark(nn.Module):
     """
-    Implements the 4 specific classical models defined by the user.
-    Input 'u' corresponds to the variable 'y_t' in the user's provided formulas.
+    Implements four specific classical benchmark models for time-series comparison.
+    These models range from simple linear regressions to polynomial models with short-term memory (looking back one
+    time step).
 
-    Models:
-    1. L (Linear):
-       Out = a*u_t + b
+    The supported model types are:
 
-    2. Q (Cubic Polynomial):
-       Out = a*u_t^3 + b*u_t^2 + c*u_t + d
+    1. **'L' (Linear)**:
+       Output depends linearly on the current input `u_t`.
+       Formula: $Out = a \cdot u_t + b$
 
-    3. L+M (Linear + Memory):
-       Out = a*u_t + b*u_{t-1} + c
+    2. **'Q' (Cubic Polynomial)**:
+       Output depends non-linearly on the current input `u_t` up to degree 3.
+       Formula: $Out = a \cdot u_t^3 + b \cdot u_t^2 + c \cdot u_t + d$
 
-    4. Q+M (Cubic Polynomial + Memory):
-       Full 3rd-degree polynomial in two variables (u_t, u_{t-1}).
-       Contains terms: u_t^3, u_t^2*u_{t-1}, ..., u_{t-1}^3 is NOT in your list,
-       but typically included in full Poly3. I strictly follow your list below:
-       Terms: u_t^3, u_t^2*u_{t-1}, u_t*u_{t-1}^2, u_t^2, u_t*u_{t-1}, u_{t-1}^2, u_t, u_{t-1}, bias
+    3. **'L+M' (Linear + Memory)**:
+       Output depends linearly on current input `u_t` and previous input `u_{t-1}`.
+       Formula: $Out = a \cdot u_t + b \cdot u_{t-1} + c$
+
+    4. **'Q+M' (Cubic Polynomial + Memory)**:
+       A partial 3rd-degree polynomial involving current `u_t` and previous `u_{t-1}`.
+       It explicitly uses the following 8 terms (plus bias):
+       $u_t^3, u_t^2 u_{t-1}, u_t u_{t-1}^2, u_t^2, u_t u_{t-1}, u_{t-1}^2, u_t, u_{t-1}$.
     """
 
-    def __init__(self, model_type="L", input_dim=1):
+    def __init__(self, model_type: str = "L", input_dim: int = 1):
+        """
+        Initialize the classical benchmark model.
+
+        Args:
+            model_type (str, optional): The architecture identifier ('L', 'Q', 'L+M', 'Q+M').
+                Defaults to "L".
+            input_dim (int, optional): The size of the input feature dimension.
+                Defaults to 1.
+
+        Raises:
+            ValueError: If an unknown `model_type` is provided.
+        """
         super().__init__()
         self.model_type = model_type
         self.input_dim = input_dim
@@ -43,7 +60,7 @@ class ClassicalBenchmark(nn.Module):
             self.net = nn.Linear(input_dim * 2, 1)
 
         elif model_type == "Q+M":
-            # Features from your formula:
+            # Features:
             # 1. u_t^3
             # 2. u_t^2 * u_{t-1}
             # 3. u_t * u_{t-1}^2
@@ -58,12 +75,18 @@ class ClassicalBenchmark(nn.Module):
         else:
             raise ValueError(f"Unknown classical model type: {model_type}")
 
-    def forward(self, u_seq):
+    def forward(self, u_seq: torch.Tensor) -> torch.Tensor:
         """
+        Forward pass for processing a sequence of inputs.
+        Constructs the feature vector based on the selected `model_type` and applies the learnable linear layer. For
+        memory-based models ('+M'), it automatically constructs the time-shifted previous step `u_{t-1}`, padding with
+        zero for the first time step.
+
         Args:
-            u_seq: Input sequence of shape (Batch, Seq_Len, 1)
+            u_seq (torch.Tensor): Input sequence tensor of shape (Batch, Seq_Len, Input_Dim).
+
         Returns:
-            Output sequence of shape (Batch, Seq_Len, 1)
+            torch.Tensor: Output prediction sequence of shape (Batch, Seq_Len, 1).
         """
         batch_size, seq_len, _ = u_seq.shape
         device = u_seq.device

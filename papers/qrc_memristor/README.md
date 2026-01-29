@@ -119,7 +119,10 @@ python reproduced_papers/qrc_memristor/utils/create_plots.py --result_dir result
 
 You can also generate plots similar to those the paper contains in the Jupyter Notebook of the repository 
 (`notebook.ipynb`). The plots that are generated in the notebook contain more details compared to the ones that are 
-created when the models are running.
+created when the models are running. For example, this is the Figure that can be generated from the notebook and 
+reproduces Figure 3 of the paper.
+
+![alt text](utils/images/figure3.png)
 
 
 

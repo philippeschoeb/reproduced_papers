@@ -7,96 +7,41 @@ import torch
 import torch.nn as nn
 import numpy as np
 from datetime import datetime
+from typing import Optional, Dict, Any, List, Union
 
 # Path fix: 3 levels up
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
-from lib.datasets import get_dataset
+from utils.utils import *
 from lib.classical_models import ClassicalBenchmark
 
-try:
-    from lib.datasets import generate_narma
-except ImportError:
-    logging.warning("Could not import generate_narma from lib.datasets. Ensure the file exists.")
 
+def train_and_evaluate(
+        model: nn.Module,
+        u_train: torch.Tensor,
+        y_train: torch.Tensor,
+        u_test: torch.Tensor,
+        y_test: torch.Tensor,
+        epochs: int,
+        lr: float,
+        device: str
+) -> float:
+    """
+    Trains a classical benchmark model and evaluates it on a test set.
 
-def setup_logging(output_dir):
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(message)s',
-        handlers=[
-            logging.FileHandler(os.path.join(output_dir, "classical_experiment.log")),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
+    Args:
+        model (nn.Module): The classical model (e.g., Linear, Quadratic).
+        u_train (torch.Tensor): Training input sequences.
+        y_train (torch.Tensor): Training target sequences.
+        u_test (torch.Tensor): Test input sequences.
+        y_test (torch.Tensor): Test target sequences.
+        epochs (int): Number of training epochs.
+        lr (float): Learning rate for the Adam optimizer.
+        device (str): Device to run training on ('cpu' or 'cuda').
 
-
-def save_json(data, filepath):
-    def convert(o):
-        if isinstance(o, (np.float32, np.float64)): return float(o)
-        if isinstance(o, np.ndarray): return o.tolist()
-        if isinstance(o, torch.Tensor): return o.item() if o.numel() == 1 else o.tolist()
-        return str(o)
-
-    with open(filepath, 'w') as f:
-        json.dump(data, f, indent=4, default=convert)
-
-
-def load_config_file(config_path):
-    if not os.path.exists(config_path):
-        print(f"Warning: Config file {config_path} not found.")
-        return {}
-
-    with open(config_path, 'r') as f:
-        config = json.load(f)
-
-    flat_config = {}
-    if 'experiment' in config:
-        flat_config.update(config['experiment'])
-    if 'data' in config:
-        flat_config.update(config['data'])
-
-    for k, v in config.items():
-        if k not in ['experiment', 'data'] and not isinstance(v, dict):
-            flat_config[k] = v
-    return flat_config
-
-
-def get_clean_config(args):
-    config = {
-        "task": args.task,
-        "model_type": args.model_type,
-        "model_class": f"ClassicalBenchmark_{args.model_type}",
-        "n_runs": args.n_runs,
-        "epochs": args.epochs,
-        "lr": args.lr,
-        "seed": args.seed,
-        "device": args.device,
-        "output_dir": args.output_dir,
-        "exp_name": args.exp_name
-    }
-    if args.task == "narma":
-        config.update({
-            "data_size": args.data_size,
-            "washout": args.washout,
-            "train_len": args.train_len
-        })
-    elif args.task == "mackey_glass":
-        config.update({
-            "data_size": args.data_size,
-            "washout": args.washout,
-            "train_len": args.train_len,
-        })
-    elif args.task == "santa_fe":
-        config.update({
-            "data_size": args.data_size,
-            "washout": args.washout,
-            "train_len": args.train_len
-        })
-    return config
-
-
-def train_and_evaluate(model, u_train, y_train, u_test, y_test, epochs, lr, device):
+    Returns:
+        float: The Mean Squared Error (MSE) on the test set.
+    """
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
@@ -116,7 +61,22 @@ def train_and_evaluate(model, u_train, y_train, u_test, y_test, epochs, lr, devi
     return test_mse
 
 
-def run_classical_task(args):
+def run_classical_task(args: argparse.Namespace) -> Dict[str, Any]:
+    """
+    Executes the classical benchmark task (NARMA, Mackey-Glass, Santa Fe).
+
+    Handles dataset generation/loading, reshaping, training, and evaluation
+    across multiple independent runs.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing results:
+            - 'mean_mse' (float): Average test MSE across runs.
+            - 'std_mse' (float): Standard deviation of test MSE.
+            - 'all_mses' (List[float]): List of MSE values for each run.
+    """
     logging.info(f"=== Classical Task: {args.task} | Model: {args.model_type} ===")
 
     all_mses = []
@@ -181,7 +141,17 @@ def run_classical_task(args):
     }
 
 
-def main(argv=None):
+def main(argv: Optional[List[str]] = None) -> int:
+    """
+    Main entry point for classical benchmark experiments.
+
+    Args:
+        argv (Optional[List[str]], optional): Command line arguments.
+            Defaults to None (uses sys.argv).
+
+    Returns:
+        int: Exit code (0 for success, 1 for error).
+    """
     parser = argparse.ArgumentParser(
         description="Classical Benchmark Experiments",
         allow_abbrev=False
@@ -254,11 +224,12 @@ def main(argv=None):
 
     results = run_classical_task(args)
 
-    save_json(get_clean_config(args), os.path.join(save_path, "config.json"))
+    save_json(get_clean_config_classical(args), os.path.join(save_path, "config.json"))
     save_json(results, os.path.join(save_path, "metrics.json"))
 
     logging.info("Classical Experiment Finished.")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

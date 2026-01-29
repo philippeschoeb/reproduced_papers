@@ -15,7 +15,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.quantum_reservoir import QuantumReservoirFeedback, QuantumReservoirFeedbackTimeSeries, QuantumReservoirNoMem
-from lib.datasets import get_dataset
+from utils.datasets import get_dataset
 from lib.training import extract_features_sequence, fit_readout_narma
 
 # --- STYLE CONFIGURATION ---
