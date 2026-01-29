@@ -117,7 +117,7 @@ def generate_mackey_glass(
 
 
 # --- 3. SANTA FE LASER (Real Data - Local File) ---
-def load_santa_fe(n_samples: int = 1000, data_dir: str = "./data") -> Tuple[np.ndarray, np.ndarray]:
+def load_santa_fe(n_samples: int = 1000, data_dir: str = "./././data/qrc_memristor") -> Tuple[np.ndarray, np.ndarray]:
     """
     Loads the Santa Fe Laser Dataset (Task A) from a local text file.
 
