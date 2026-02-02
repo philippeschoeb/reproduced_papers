@@ -16,7 +16,7 @@ The goal of this project is to reproduce and validate the performance of a hybri
 - **Models**:
   - **Quantum**: Quantum Reservoir with Memristor (`memristor`), Quantum Reservoir without Memristor (`nomem`).
   - **Classical**: Linear (`L`), Quadratic (`Q`), Linear with Memory (`L+M`), Quadratic with Memory (`Q+M`).
-- **Tasks**:
+- **Tasks (for now only NARMA10 and nonlinear function transormation work as epxected)**:
   - NARMA10 (Time-series prediction)
   - Non-linear function transformation
   - Mackey-Glass
@@ -87,16 +87,16 @@ python implementation.py --paper qrc_memristor --config configs/nonlinear_memris
 
 The CLI accepts the following arguments (see `configs/cli.json` for details):
 
-| Argument | Description | Options / Examples |
-| :--- | :--- | :--- |
-| `--mode` | Select experiment script | `quantum` (default), `classical` |
-| `--task` | Task to run | `narma`, `nonlinear`, `mackey_glass`, `santa_fe` |
-| `--model-type` | Model architecture | **Q**: `memristor`, `nomem`<br>**C**: `L`, `Q`, `L+M`, `Q+M` |
-| `--memory` | Memory depth | `4`, `10`, `20` (Integer) |
-| `--n-runs` | Number of independent runs | `10` (Integer) |
-| `--epochs` | Training epochs | `100`, `200` (Integer) |
-| `--lr` | Learning rate | `0.01`, `0.05` (Float) |
-| `--output-dir` | Output directory base | `results/`, `results_classical/` |
+| Argument | Description                                        | Options / Examples |
+| :--- |:---------------------------------------------------| :--- |
+| `--mode` | Select experiment script                           | `quantum` (default), `classical` |
+| `--task` | Task to run (narma and nonlinear work as expected) | `narma`, `nonlinear`, `mackey_glass`, `santa_fe` |
+| `--model-type` | Model architecture                                 | **Q**: `memristor`, `nomem`<br>**C**: `L`, `Q`, `L+M`, `Q+M` |
+| `--memory` | Memory depth                                       | `4`, `10`, `20` (Integer) |
+| `--n-runs` | Number of independent runs                         | `10` (Integer) |
+| `--epochs` | Training epochs                                    | `100`, `200` (Integer) |
+| `--lr` | Learning rate                                      | `0.01`, `0.05` (Float) |
+| `--output-dir` | Output directory base                              | `results/`, `results_classical/` |
 
 
 ## Results and Analysis
@@ -119,7 +119,9 @@ python reproduced_papers/qrc_memristor/utils/create_plots.py --result_dir result
 
 You can also generate plots similar to those the paper contains in the Jupyter Notebook of the repository 
 (`notebook.ipynb`). The plots that are generated in the notebook contain more details compared to the ones that are 
-created when the models are running. For example, this is the Figure that can be generated from the notebook and 
+created when the models are running. 
+
+For example, this is the Figure that can be generated from the notebook and 
 reproduces Figure 3 of the paper.
 
 ![alt text](utils/images/figure3.png)
