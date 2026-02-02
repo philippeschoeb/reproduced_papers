@@ -8,28 +8,47 @@ It can be run after experiments complete to create publication-quality figures.
 
 Usage:
     # Generate figures for a specific run
-    python -m utils.generate_figures results/train_quantum/run_20240120-123456
+    python utils/generate_figures.py results/train_quantum/run_20240120-123456
 
     # Generate figures for all runs in a directory
-    python -m utils.generate_figures results/ --all
+    python utils/generate_figures.py results/ --all
 
     # Regenerate specific figure types
-    python -m utils.generate_figures results/attack_bim/run_xxx --type attack
+    python utils/generate_figures.py results/attack_bim/run_xxx --type attack
 """
+
+from __future__ import annotations
 
 import argparse
 import json
 import logging
+import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .plot_attacks import plot_attack_from_results, plot_robustness_from_results
-from .plot_comparison import (
-    plot_model_comparison_from_results,
-    plot_noise_comparison_from_results,
-    plot_transfer_from_results,
-)
-from .plot_training import plot_training_from_results
+# Handle imports for both direct execution and module execution
+if __name__ == "__main__":
+    # When run directly, add parent to path for sibling imports
+    _parent = Path(__file__).resolve().parent
+    if str(_parent.parent) not in sys.path:
+        sys.path.insert(0, str(_parent.parent))
+
+    from utils.plot_attacks import plot_attack_from_results, plot_robustness_from_results
+    from utils.plot_comparison import (
+        plot_model_comparison_from_results,
+        plot_noise_comparison_from_results,
+        plot_transfer_from_results,
+    )
+    from utils.plot_training import plot_training_from_results
+else:
+    # When imported as a module
+    from .plot_attacks import plot_attack_from_results, plot_robustness_from_results
+    from .plot_comparison import (
+        plot_model_comparison_from_results,
+        plot_noise_comparison_from_results,
+        plot_transfer_from_results,
+    )
+    from .plot_training import plot_training_from_results
 
 logger = logging.getLogger(__name__)
 
@@ -120,9 +139,9 @@ def detect_experiment_type(run_dir: Path, results: dict[str, Any]) -> str:
 
 
 def generate_figures_for_run(
-    run_dir: Path,
-    figure_types: list[str] | None = None,
-    force: bool = False,
+        run_dir: Path,
+        figure_types: list[str] | None = None,
+        force: bool = False,
 ) -> list[Path]:
     """Generate figures for a single run.
 
@@ -202,8 +221,8 @@ def generate_figures_for_run(
 
 
 def generate_all_figures(
-    base_dir: Path,
-    force: bool = False,
+        base_dir: Path,
+        force: bool = False,
 ) -> dict[str, list[Path]]:
     """Generate figures for all runs in a directory.
 
@@ -216,24 +235,16 @@ def generate_all_figures(
     """
     base_dir = Path(base_dir)
     all_generated = {}
+    processed_dirs = set()
 
     # Find all run directories (contain results files)
     for run_dir in base_dir.rglob("run_*"):
-        if run_dir.is_dir():
+        if run_dir.is_dir() and str(run_dir) not in processed_dirs:
+            processed_dirs.add(str(run_dir))
             figures = generate_figures_for_run(run_dir, force=force)
             if figures:
                 all_generated[str(run_dir)] = figures
                 logger.info(f"Generated {len(figures)} figures for {run_dir}")
-
-    # Also check direct subdirectories that might contain results
-    for subdir in base_dir.iterdir():
-        if subdir.is_dir() and not subdir.name.startswith("run_"):
-            for run_dir in subdir.glob("run_*"):
-                if run_dir.is_dir():
-                    figures = generate_figures_for_run(run_dir, force=force)
-                    if figures:
-                        all_generated[str(run_dir)] = figures
-                        logger.info(f"Generated {len(figures)} figures for {run_dir}")
 
     return all_generated
 
