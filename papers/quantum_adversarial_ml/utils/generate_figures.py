@@ -24,7 +24,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 # Handle imports for both direct execution and module execution
 if __name__ == "__main__":
@@ -33,7 +33,10 @@ if __name__ == "__main__":
     if str(_parent.parent) not in sys.path:
         sys.path.insert(0, str(_parent.parent))
 
-    from utils.plot_attacks import plot_attack_from_results, plot_robustness_from_results
+    from utils.plot_attacks import (
+        plot_attack_from_results,
+        plot_robustness_from_results,
+    )
     from utils.plot_comparison import (
         plot_model_comparison_from_results,
         plot_noise_comparison_from_results,
