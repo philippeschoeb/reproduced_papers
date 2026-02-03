@@ -77,15 +77,22 @@ for paper in "${PAPERS[@]}"; do
   fi
 
   echo "==> [$paper] setting up venv at $env_dir"
-  if [[ "$paper_rel" == "qLLM" ]] && [[ -x "$env_dir/bin/python" ]]; then
-    py_version="$("$env_dir/bin/python" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')"
-    if [[ "$py_version" != "3.12" ]]; then
-        echo "[INFO] Recreating qLLM venv with python3.12 (found $py_version)." >&2
-        rm -rf "$env_dir"
+  keep_existing_venv=0
+  if [[ "$paper_rel" == "qLLM" ]] && ! command -v python3.12 >/dev/null 2>&1; then
+    if [[ -x "$env_dir/bin/python" ]]; then
+      py_version="$("$env_dir/bin/python" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')"
+      if [[ "$py_version" =~ ^3\.(10|11|12)$ ]]; then
+        echo "[INFO] Keeping existing qLLM venv with Python $py_version (python3.12 not found)." >&2
+        keep_existing_venv=1
       fi
     fi
-  if [[ ! -d "$env_dir" ]] || [[ ! -f "$env_dir/bin/activate" ]]; then
-    rm -rf "$env_dir"
+  fi
+
+  if [[ $keep_existing_venv -eq 0 ]]; then
+    if [[ -d "$env_dir" ]] || [[ -f "$env_dir/bin/activate" ]]; then
+      echo "Old venv detected, then removed and new venv installing..."
+      rm -rf "$env_dir"
+    fi
     $paper_python -m venv "$env_dir"
   fi
 
