@@ -101,7 +101,7 @@ class QGAN:
 
         params_prog = []
         fake_progress = []
-        spsa_step_duration = spsa_iter_num // opt_iter_num
+        spsa_step_duration = max(1, spsa_iter_num // opt_iter_num)
 
         criterion = nn.BCELoss()
         D_params = self.D.parameters()

@@ -158,11 +158,15 @@ class PatchGenerator:
                     except:
                         pass
                 # print(np.sum(gen_out / self.sample_count), np.sum(gen_out / total_count))
-                gen_out /= total_count
+                if total_count > 0:
+                    gen_out /= total_count
                 out_modes = map_generator_output(
                         gen_out, self.image_size * self.image_size // self.gen_count
                 )
-                fake_data_sample.extend(out_modes / np.max(out_modes))
+                max_mode = np.max(out_modes)
+                if max_mode > 0:
+                    out_modes = out_modes / max_mode
+                fake_data_sample.extend(out_modes)
 
             fake_data.append(fake_data_sample)
         fake_data = torch.FloatTensor(fake_data)
