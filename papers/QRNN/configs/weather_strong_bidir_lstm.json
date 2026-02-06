@@ -1,0 +1,56 @@
+{
+  "description": "Stronger classical baseline (Bidirectional LSTM + AdamW + cosine scheduler)",
+  "seed": 42,
+  "dtype": "float32",
+  "outdir": "outdir",
+  "device": "cpu",
+  "dataset": {
+    "name": "weather_prediction",
+    "path": "szeged-weather.csv",
+    "kaggle_dataset": "budincsevity/szeged-weather",
+    "preprocess": "szeged_weather",
+    "target_column": "max_temperature",
+    "feature_columns": [
+      "min_temperature",
+      "max_temperature",
+      "avg_humidity",
+      "avg_wind_speed",
+      "avg_pressure",
+      "month"
+    ],
+    "time_column": "date",
+    "sequence_length": 60,
+    "prediction_horizon": 1,
+    "max_rows": null,
+    "train_ratio": 0.8,
+    "val_ratio": 0.1,
+    "batch_size": 64,
+    "shuffle": true
+  },
+  "model": {
+    "name": "rnn_baseline",
+    "params": {
+      "cell_type": "lstm",
+      "hidden_dim": 192,
+      "layers": 2,
+      "dropout": 0.25,
+      "input_dropout": 0.1,
+      "bidirectional": true
+    }
+  },
+  "training": {
+    "epochs": 80,
+    "optimizer": "adamw",
+    "lr": 0.0005,
+    "weight_decay": 0.01,
+    "clip_grad_norm": 1.0,
+    "loss": "huber",
+    "huber_delta": 1.0,
+    "scheduler": {
+      "name": "cosine",
+      "params": {"t_max": 80, "min_lr": 1e-6}
+    },
+    "early_stopping": {"enabled": true, "patience": 12, "min_delta": 0.0}
+  },
+  "logging": {"level": "info", "save_config_snapshot": true}
+}
