@@ -4,8 +4,10 @@
 Targets the QRNN-style `predictions.csv` (columns: split,prediction,target).
 
 Examples:
-  python -m papers.shared.time_series.plot_predictions /tmp/run_2026...
-  python -m papers.shared.time_series.plot_predictions /tmp/run_a /tmp/run_b
+    python -m papers.shared.time_series.plot_predictions /tmp/run_2026...
+    python -m papers.shared.time_series.plot_predictions /tmp/run_a /tmp/run_b
+    python -m papers.shared.time_series.plot_predictions \
+        /tmp/run_a:RNN /tmp/run_b:Photonic
 
 If you want the QRNN convenience wrapper, use:
   python papers/QRNN/utils/plot_predictions.py <run_dir>
@@ -50,6 +52,58 @@ def _build_title(cfg: dict, run_dirs: list[Path]) -> str:
     return f"Predictions overlay — {dataset_name} ({model_name}) — {labels}"
 
 
+def _parse_labels(labels_csv: str | None, *, expected: int) -> list[str] | None:
+    if labels_csv is None:
+        return None
+    labels = [part.strip() for part in labels_csv.split(",")]
+    labels = [lbl for lbl in labels if lbl]
+    if len(labels) != expected:
+        raise ValueError(
+            f"--labels expects {expected} comma-separated values, got {len(labels)}"
+        )
+    return labels
+
+
+def _maybe_parse_run_spec(spec: str) -> tuple[Path, str | None]:
+    """Parse a positional run spec.
+
+    Supported forms:
+    - /path/to/run
+    - /path/to/run:My label
+
+    Parsing is done by splitting on the *last* ':' and only treating it as a
+    label separator when the left side resolves to an existing path.
+    This keeps Windows paths like 'C:\\path\\to\\run' working.
+    """
+
+    candidate = Path(spec).expanduser()
+    if candidate.exists():
+        return candidate, None
+
+    if ":" not in spec:
+        return candidate, None
+
+    left, right = spec.rsplit(":", 1)
+    left_path = Path(left).expanduser()
+    if left_path.exists() and right.strip():
+        return left_path, right.strip()
+    return candidate, None
+
+
+def _parse_run_specs(specs: list[str]) -> tuple[list[Path], list[str] | None]:
+    run_dirs: list[Path] = []
+    labels: list[str | None] = []
+    for spec in specs:
+        run_dir, label = _maybe_parse_run_spec(spec)
+        run_dirs.append(run_dir)
+        labels.append(label)
+
+    if any(lbl is not None for lbl in labels):
+        finalized = [lbl if lbl is not None else rd.name for rd, lbl in zip(run_dirs, labels)]
+        return run_dirs, finalized
+    return run_dirs, None
+
+
 def _load_predictions(run_dir: Path) -> pd.DataFrame:
     predictions_path = run_dir / "predictions.csv"
     if not predictions_path.exists():
@@ -83,8 +137,15 @@ def _assert_compatibility(base: pd.DataFrame, other: pd.DataFrame) -> None:
         raise ValueError("Runs are incompatible: targets differ between runs")
 
 
-def plot_runs(run_dirs: list[Path], out_path: Path | None = None) -> Path:
+def plot_runs(
+    run_dirs: list[Path],
+    out_path: Path | None = None,
+    *,
+    labels: list[str] | None = None,
+) -> Path:
     run_dirs = [rd.resolve() for rd in run_dirs]
+    if labels is not None and len(labels) != len(run_dirs):
+        raise ValueError("labels must match run_dirs length")
     cfg = _load_config(run_dirs[0])
     y_label = cfg.get("dataset", {}).get("target_column", "target")
 
@@ -137,8 +198,11 @@ def plot_runs(run_dirs: list[Path], out_path: Path | None = None) -> Path:
         linewidth=2,
         color="black",
     )
-    for ordered in ordered_dfs:
-        label = ordered["run"].iloc[0] if "run" in ordered else "prediction"
+    for idx, ordered in enumerate(ordered_dfs):
+        if labels is not None:
+            label = labels[idx]
+        else:
+            label = ordered["run"].iloc[0] if "run" in ordered else "prediction"
         plt.plot(ordered["step"], ordered["prediction"], label=label, linewidth=1.5)
 
     plt.title(_build_title(cfg, run_dirs))
@@ -165,8 +229,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "run_dirs",
         nargs="+",
-        type=Path,
-        help="One or more run directories containing predictions.csv",
+        type=str,
+        help=(
+            "One or more run directories containing predictions.csv. "
+            "You can also pass 'path:label' to customize legend labels."
+        ),
     )
     parser.add_argument(
         "--out-path",
@@ -174,9 +241,24 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Explicit output path for the saved plot (default: saved in the first run directory)",
     )
+    parser.add_argument(
+        "--labels",
+        type=str,
+        default=None,
+        help=(
+            "Comma-separated labels (same count/order as run_dirs) to use in the legend. "
+            'Example: --labels "RNN,Photonic"'
+        ),
+    )
     args = parser.parse_args(argv)
 
-    out_path = plot_runs(args.run_dirs, out_path=args.out_path)
+    run_dirs, spec_labels = _parse_run_specs(list(args.run_dirs))
+    flag_labels = _parse_labels(args.labels, expected=len(run_dirs))
+    if spec_labels is not None and flag_labels is not None:
+        raise ValueError("Provide labels either via 'path:label' or via --labels, not both")
+    labels = spec_labels if spec_labels is not None else flag_labels
+
+    out_path = plot_runs(run_dirs, out_path=args.out_path, labels=labels)
     print(f"Saved plot to {out_path}")
     return 0
 

@@ -74,3 +74,116 @@ def test_build_dataloaders_parses_alias_columns(tmp_path):
     assert len(val_loader.dataset) + len(test_loader.dataset) + len(train_loader.dataset) == sum(
         metadata["splits"].values()
     )
+
+
+def _has_merlin() -> bool:
+    try:
+        import importlib
+
+        import merlin as ml
+
+        if not hasattr(ml, "QuantumLayer"):
+            return False
+        if not hasattr(ml, "MeasurementStrategy"):
+            return False
+        # Photonic QRNN requires partial measurement support (Merlin v0.3+).
+        if not hasattr(ml.MeasurementStrategy, "partial"):
+            return False
+        importlib.import_module("merlin.core.partial_measurement")
+        importlib.import_module("merlin.core.state_vector")
+        return True
+    except Exception:
+        return False
+
+
+def test_photonic_qrnn_supports_batched_forward_and_backward():
+    if not _has_merlin():
+        return
+
+    from lib.photonic_qrnn import PhotonicQRNNConfig, PhotonicQRNNRegressor
+
+    torch.manual_seed(0)
+
+    cfg = PhotonicQRNNConfig(
+        kd=1,
+        kh=1,
+        depth=1,
+        shots=0,
+        dtype=torch.float32,
+        measurement_space="dual_rail",
+    )
+    model = PhotonicQRNNRegressor(input_size=2, config=cfg)
+
+    x = torch.randn(2, 3, 2)
+    y = model(x)
+    assert y.shape == (2,)
+
+    loss = y.sum()
+    loss.backward()
+    assert model.cell.readout.weight.grad is not None
+
+
+def test_photonic_training_per_sample_steps_with_batched_loader():
+    if not _has_merlin():
+        return
+
+    from lib.photonic_qrnn import PhotonicQRNNConfig, PhotonicQRNNRegressor
+    from lib.training import train_one_epoch
+
+    torch.manual_seed(0)
+
+    cfg = PhotonicQRNNConfig(
+        kd=1,
+        kh=1,
+        depth=1,
+        shots=0,
+        dtype=torch.float32,
+        measurement_space="dual_rail",
+    )
+    model = PhotonicQRNNRegressor(input_size=2, config=cfg)
+
+    x = torch.randn(2, 3, 2)
+    y = torch.randn(2)
+
+    ds = torch.utils.data.TensorDataset(x, y)
+    loader = torch.utils.data.DataLoader(ds, batch_size=2, shuffle=False, num_workers=0)
+
+    class _CountingAdam(torch.optim.Adam):
+        def __init__(self, params, **kwargs):
+            super().__init__(params, **kwargs)
+            self.step_calls = 0
+
+        def step(self, closure=None):  # type: ignore[override]
+            self.step_calls += 1
+            return super().step(closure=closure)
+
+    opt = _CountingAdam(model.parameters(), lr=1e-3)
+    crit = torch.nn.MSELoss()
+    device = torch.device("cpu")
+
+    train_one_epoch(model, loader, crit, opt, device)
+    # Default is per-sample stepping for photonic models when batch_size > 1.
+    assert opt.step_calls == 2
+
+
+def _has_perceval_and_matplotlib() -> bool:
+    try:
+        import perceval as _  # noqa: F401
+        import matplotlib as _  # noqa: F401
+
+        return True
+    except Exception:
+        return False
+
+
+def test_qrb_circuit_png_export(tmp_path):
+    if not _has_perceval_and_matplotlib():
+        return
+
+    from lib.perceval_export import export_qrb_circuit_svg
+
+    svg = export_qrb_circuit_svg(run_dir=tmp_path, kd=1, kh=0)
+    assert svg is not None
+    assert svg.exists()
+    assert svg.stat().st_size > 0
+    assert "<svg" in svg.read_text(encoding="utf-8")

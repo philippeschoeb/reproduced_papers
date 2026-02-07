@@ -8,6 +8,8 @@ Currently targets the QRNN-style `metrics.json` format:
 Examples:
   python -m papers.shared.time_series.plot_metrics /tmp/run_*/
   python -m papers.shared.time_series.plot_metrics /tmp/run_2026... --include-val
+    python -m papers.shared.time_series.plot_metrics \
+        /tmp/run_a:RNN /tmp/run_b:Photonic --include-val
 
 If you want the QRNN convenience wrapper, use:
   python papers/QRNN/utils/plot_metrics.py <run_dir>
@@ -66,14 +68,76 @@ def _series(history: list[dict], key: str) -> list[float]:
     return out
 
 
+def _parse_labels(labels_csv: str | None, *, expected: int) -> list[str] | None:
+    if labels_csv is None:
+        return None
+    labels = [part.strip() for part in labels_csv.split(",")]
+    labels = [lbl for lbl in labels if lbl]
+    if len(labels) != expected:
+        raise ValueError(
+            f"--labels expects {expected} comma-separated values, got {len(labels)}"
+        )
+    return labels
+
+
+def _maybe_parse_run_spec(spec: str) -> tuple[Path, str | None]:
+    """Parse a positional run spec.
+
+    Supported forms:
+    - /path/to/run
+    - /path/to/run/metrics.json
+    - /path/to/run:My label
+    - /path/to/run/metrics.json:My label
+
+    Parsing is done by splitting on the *last* ':' and only treating it as a
+    label separator when the left side resolves to an existing path.
+    This keeps Windows paths like 'C:\\path\\to\\run' working.
+    """
+
+    candidate = Path(spec).expanduser()
+    if candidate.exists():
+        return candidate, None
+
+    if ":" not in spec:
+        return candidate, None
+
+    left, right = spec.rsplit(":", 1)
+    left_path = Path(left).expanduser()
+    if left_path.exists() and right.strip():
+        return left_path, right.strip()
+
+    return candidate, None
+
+
+def _parse_run_specs(specs: list[str]) -> tuple[list[Path], list[str] | None]:
+    paths: list[Path] = []
+    labels: list[str | None] = []
+    for spec in specs:
+        path, label = _maybe_parse_run_spec(spec)
+        paths.append(path)
+        labels.append(label)
+
+    if any(lbl is not None for lbl in labels):
+        resolved = [_resolve_run_dir(p) for p in paths]
+        finalized = [
+            lbl if lbl is not None else rd.name for rd, lbl in zip(resolved, labels)
+        ]
+        return paths, finalized
+
+    return paths, None
+
+
 def plot_runs(
     run_dirs: list[Path],
     *,
     out_path: Path | None = None,
     show: bool = False,
     include_val: bool = False,
+    labels: list[str] | None = None,
 ) -> Path:
     run_dirs = [_resolve_run_dir(p) for p in run_dirs]
+    if labels is not None and len(labels) != len(run_dirs):
+        raise ValueError("labels must match run_dirs length")
 
     maybe_use_agg_backend(show=show)
     import matplotlib.pyplot as plt
@@ -83,14 +147,14 @@ def plot_runs(
     ax1 = plt.subplot(1, 2, 1)
     ax2 = plt.subplot(1, 2, 2)
 
-    for run_dir in run_dirs:
+    for idx, run_dir in enumerate(run_dirs):
         history = _load_history(run_dir)
         epochs = _series(history, "epoch")
 
         test_acc = _series(history, "test_accuracy")
         test_loss = _series(history, "test_loss")
 
-        label = run_dir.name
+        label = labels[idx] if labels is not None else run_dir.name
 
         ax1.plot(epochs, test_acc, label=label, linewidth=1.8)
         ax2.plot(epochs, test_loss, label=label, linewidth=1.8)
@@ -138,8 +202,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "run_dirs",
         nargs="+",
-        type=Path,
-        help="One or more run directories (or metrics.json files)",
+        type=str,
+        help=(
+            "One or more run directories (or metrics.json files). "
+            "You can also pass 'path:label' to customize legend labels."
+        ),
     )
     parser.add_argument(
         "--out-path",
@@ -157,14 +224,30 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Also plot validation curves (dashed)",
     )
+    parser.add_argument(
+        "--labels",
+        type=str,
+        default=None,
+        help=(
+            "Comma-separated labels (same count/order as run_dirs) to use in the legend. "
+            'Example: --labels "RNN,Photonic"'
+        ),
+    )
 
     args = parser.parse_args(argv)
 
+    run_paths, spec_labels = _parse_run_specs(list(args.run_dirs))
+    flag_labels = _parse_labels(args.labels, expected=len(run_paths))
+    if spec_labels is not None and flag_labels is not None:
+        raise ValueError("Provide labels either via 'path:label' or via --labels, not both")
+    labels = spec_labels if spec_labels is not None else flag_labels
+
     out_path = plot_runs(
-        args.run_dirs,
+        [Path(p) for p in run_paths],
         out_path=args.out_path,
         show=args.show,
         include_val=args.include_val,
+        labels=labels,
     )
     print(f"Saved plot to {out_path}")
     return 0

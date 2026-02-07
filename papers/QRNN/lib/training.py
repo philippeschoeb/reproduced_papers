@@ -71,24 +71,79 @@ def train_one_epoch(
     optimizer: torch.optim.Optimizer,
     device: torch.device,
     grad_clip: float | None = None,
+    *,
+    photonic_optimizer_step: str = "per_sample",
 ) -> float:
     model.train()
     running_loss = 0.0
     total_samples = 0
+
+    # Local import to avoid making photonic support a hard dependency for readers.
+    try:
+        from .photonic_qrnn import PhotonicQRNNRegressor  # type: ignore
+    except Exception:  # pragma: no cover
+        PhotonicQRNNRegressor = None  # type: ignore[assignment]
+
+    photonic_optimizer_step = str(photonic_optimizer_step).strip().lower()
+    if photonic_optimizer_step not in {"per_sample", "per_batch"}:
+        raise ValueError(
+            "photonic_optimizer_step must be 'per_sample' or 'per_batch', "
+            f"got {photonic_optimizer_step!r}"
+        )
+
     for batch_x, batch_y in loader:
         batch_x = batch_x.to(device)
         batch_y = batch_y.to(device)
 
-        optimizer.zero_grad()
-        preds = model(batch_x)
-        loss = criterion(preds, batch_y)
-        loss.backward()
-        if grad_clip:
-            nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
-        optimizer.step()
+        batch_size = int(batch_x.size(0))
 
-        batch_size = batch_x.size(0)
-        running_loss += loss.item() * batch_size
+        is_photonic = (
+            PhotonicQRNNRegressor is not None
+            and isinstance(model, PhotonicQRNNRegressor)
+            and batch_size > 1
+        )
+
+        if is_photonic and photonic_optimizer_step == "per_sample":
+            # NOTE: With large batch sizes, stepping once per batch dramatically
+            # reduces the number of optimizer updates per epoch (e.g., ~67 vs ~3
+            # steps on the tiny sin dataset). Since the photonic forward is
+            # sequential anyway, we default to per-sample stepping for a fairer
+            # comparison with batch_size=1.
+            loss_sum = 0.0
+            for i in range(batch_size):
+                optimizer.zero_grad()
+                preds_i = model(batch_x[i : i + 1])
+                loss_i = criterion(preds_i, batch_y[i : i + 1])
+                loss_i.backward()
+                if grad_clip:
+                    nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+                optimizer.step()
+                loss_sum += float(loss_i.item())
+            loss_value = loss_sum / batch_size
+        else:
+            optimizer.zero_grad()
+            if is_photonic:
+                # Avoid holding the computation graph for all samples simultaneously.
+                # Accumulate gradients over per-sample losses scaled to match the
+                # default mean reduction, then apply a single optimizer step.
+                loss_sum = 0.0
+                for i in range(batch_size):
+                    preds_i = model(batch_x[i : i + 1])
+                    loss_i = criterion(preds_i, batch_y[i : i + 1])
+                    (loss_i / batch_size).backward()
+                    loss_sum += float(loss_i.item())
+                loss_value = loss_sum / batch_size
+            else:
+                preds = model(batch_x)
+                loss = criterion(preds, batch_y)
+                loss.backward()
+                loss_value = float(loss.item())
+
+            if grad_clip:
+                nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+            optimizer.step()
+
+        running_loss += loss_value * batch_size
         total_samples += batch_size
 
     return running_loss / max(total_samples, 1)
@@ -189,8 +244,15 @@ def fit(
     best_state = None
 
     for epoch in range(1, epochs + 1):
+        photonic_step = str(training_cfg.get("photonic_optimizer_step", "per_sample"))
         train_loss = train_one_epoch(
-            model, train_loader, criterion, optimizer, device, grad_clip
+            model,
+            train_loader,
+            criterion,
+            optimizer,
+            device,
+            grad_clip,
+            photonic_optimizer_step=photonic_step,
         )
         val_loss, val_acc = evaluate_metrics(
             model, val_loader, criterion, device, target_scale, target_mean, target_std

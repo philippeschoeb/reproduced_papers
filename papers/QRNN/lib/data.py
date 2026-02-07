@@ -314,6 +314,28 @@ def build_dataloaders(cfg: dict) -> tuple[DataLoader, DataLoader, DataLoader, di
         x, y = generator.get_data(seq_len=sequence_length, target_dim=1, max_samples=max_samples)
         if x.ndim == 2:
             x = x.unsqueeze(-1)
+
+        feature_dim = generator_cfg.get("feature_dim")
+        if feature_dim is None:
+            feature_dim = dataset_cfg.get("feature_dim")
+        if feature_dim is not None:
+            feature_dim = int(feature_dim)
+            if feature_dim <= 0:
+                raise ValueError("feature_dim must be positive")
+            if x.shape[-1] == 1 and feature_dim != 1:
+                padded = torch.zeros(
+                    x.shape[0],
+                    x.shape[1],
+                    feature_dim,
+                    dtype=x.dtype,
+                    device=x.device,
+                )
+                padded[:, :, 0] = x[:, :, 0]
+                x = padded
+            elif x.shape[-1] != feature_dim:
+                raise ValueError(
+                    f"Generator produced input_size={x.shape[-1]} but feature_dim={feature_dim} was requested"
+                )
         dataset = TensorSequenceDataset(x, y, dtype=dtype)
 
         total_len = len(dataset)

@@ -12,13 +12,47 @@ from torch.utils.data import DataLoader
 from runtime_lib.dtypes import describe_dtype, dtype_torch
 
 from .data import build_dataloaders
+from torch import nn
+
 from .model import RNNRegressor
 from .training import fit
 
 
-def _build_model(cfg: dict, input_size: int) -> RNNRegressor:
+def _build_model(cfg: dict, input_size: int) -> nn.Module:
+    logger = logging.getLogger(__name__)
     model_cfg = cfg.get("model", {})
+    name = str(model_cfg.get("name", "rnn_baseline")).strip().lower()
     params = model_cfg.get("params", {})
+
+    if name == "photonic_qrnn":
+        try:
+            from .photonic_qrnn import PhotonicQRNNConfig, PhotonicQRNNRegressor
+        except Exception as exc:
+            raise RuntimeError(
+                "photonic_qrnn model requires Merlin/Perceval features that are not available in this environment. "
+                "Install a compatible merlinquantum/merlin version, or use model.name='rnn_baseline'."
+            ) from exc
+
+        if "branch_selection" in params:
+            logger.warning(
+                "Ignoring deprecated model.params.branch_selection=%r; photonic QRNN always propagates all branches.",
+                params.get("branch_selection"),
+            )
+        if "y_dim" in params:
+            logger.warning(
+                "Ignoring deprecated model.params.y_dim=%r; photonic QRNN output dimension is derived from the dataset (currently scalar).",
+                params.get("y_dim"),
+            )
+        photonic_cfg = PhotonicQRNNConfig(
+            kd=int(params.get("kd", 1)),
+            kh=int(params.get("kh", 1)),
+            depth=int(params.get("depth", 1)),
+            shots=int(params.get("shots", 0)),
+            dtype=dtype_torch(cfg.get("dtype")),
+            measurement_space=str(params.get("measurement_space", "dual_rail")),
+        )
+        return PhotonicQRNNRegressor(input_size=input_size, config=photonic_cfg)
+
     hidden_dim = int(params.get("hidden_dim", 64))
     layers = int(params.get("layers", 1))
     dropout = float(params.get("dropout", 0.0))
@@ -45,31 +79,71 @@ def train_and_evaluate(cfg: dict, run_dir: Path) -> None:
     train_loader, val_loader, test_loader, metadata = build_dataloaders(cfg)
     model = _build_model(cfg, metadata["input_size"])
 
+    model_cfg = cfg.get("model", {})
+    model_name = str(model_cfg.get("name", "rnn_baseline")).strip().lower()
+    model_params = model_cfg.get("params", {})
+
+    dataset_cfg = cfg.get("dataset", {})
     logger.info(
         "Config summary | dataset=%s path=%s preprocess=%s seq_len=%d pred_horizon=%d batch=%d "
-        "splits(train/val/test)=%d/%d/%d | model cell=%s hidden=%d layers=%d dropout=%.2f bidi=%s | epochs=%d lr=%g opt=%s",
-        cfg.get("dataset", {}).get("name"),
-        cfg.get("dataset", {}).get("path"),
-        cfg.get("dataset", {}).get("preprocess"),
-        cfg.get("dataset", {}).get("sequence_length"),
-        cfg.get("dataset", {}).get("prediction_horizon"),
-        cfg.get("dataset", {}).get("batch_size"),
+        "splits(train/val/test)=%d/%d/%d",
+        dataset_cfg.get("name"),
+        dataset_cfg.get("path"),
+        dataset_cfg.get("preprocess"),
+        dataset_cfg.get("sequence_length"),
+        dataset_cfg.get("prediction_horizon"),
+        dataset_cfg.get("batch_size"),
         metadata.get("splits", {}).get("train", 0),
         metadata.get("splits", {}).get("val", 0),
         metadata.get("splits", {}).get("test", 0),
-        cfg.get("model", {}).get("params", {}).get("cell_type", "rnn"),
-        cfg.get("model", {}).get("params", {}).get("hidden_dim"),
-        cfg.get("model", {}).get("params", {}).get("layers"),
-        cfg.get("model", {}).get("params", {}).get("dropout"),
-        cfg.get("model", {}).get("params", {}).get("bidirectional", False),
-        cfg.get("training", {}).get("epochs"),
-        cfg.get("training", {}).get("lr"),
-        cfg.get("training", {}).get("optimizer", "adam"),
     )
 
+    if model_name == "photonic_qrnn":
+        logger.info(
+            "Model summary | model=%s kd=%s kh=%s depth=%s shots=%s measurement_space=%s | "
+            "epochs=%d lr=%g opt=%s",
+            model_name,
+            model_params.get("kd"),
+            model_params.get("kh"),
+            model_params.get("depth"),
+            model_params.get("shots"),
+            model_params.get("measurement_space"),
+            cfg.get("training", {}).get("epochs"),
+            cfg.get("training", {}).get("lr"),
+            cfg.get("training", {}).get("optimizer", "adam"),
+        )
+    else:
+        logger.info(
+            "Model summary | model=%s cell=%s hidden=%s layers=%s dropout=%s bidi=%s | epochs=%d lr=%g opt=%s",
+            model_name,
+            model_params.get("cell_type", "rnn"),
+            model_params.get("hidden_dim"),
+            model_params.get("layers"),
+            model_params.get("dropout"),
+            model_params.get("bidirectional", False),
+            cfg.get("training", {}).get("epochs"),
+            cfg.get("training", {}).get("lr"),
+            cfg.get("training", {}).get("optimizer", "adam"),
+        )
+
     dtype = dtype_torch(cfg.get("dtype"))
-    if dtype is not None:
+    is_photonic = model_name == "photonic_qrnn"
+    if dtype is not None and not is_photonic:
         model = model.to(dtype=dtype)
+
+    if is_photonic:
+        try:
+            from .perceval_export import export_qrb_circuit_svg
+
+            svg_path = export_qrb_circuit_svg(
+                run_dir=run_dir,
+                kd=int(model_cfg.get("params", {}).get("kd", 1)),
+                kh=int(model_cfg.get("params", {}).get("kh", 1)),
+            )
+            if svg_path is not None:
+                logger.info("Saved QRB circuit diagram to %s", svg_path)
+        except Exception:
+            logger.warning("Failed to export QRB circuit diagram", exc_info=True)
 
     device = torch.device(cfg.get("device", "cpu"))
     cfg_with_metadata = dict(cfg)
