@@ -19,6 +19,50 @@ LOGGER = logging.getLogger(__name__)
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 
 
+def _compute_feature_shift_scale(
+    values: torch.Tensor,
+    *,
+    scheme: str,
+    dtype: torch.dtype,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Compute affine feature normalization parameters.
+
+    We keep the historical names feature_mean/feature_std in datasets, but they
+    semantically represent an affine transform:
+
+        x_norm = (x - shift) / scale
+
+    where (shift, scale) depend on the chosen scheme.
+    """
+
+    scheme_norm = str(scheme or "standard").strip().lower()
+    if scheme_norm in {"standard", "zscore", "z-score"}:
+        shift = values.mean(dim=0, keepdim=True)
+        scale = values.std(dim=0, keepdim=True)
+    elif scheme_norm in {"none", "identity"}:
+        shift = torch.zeros((1, values.shape[1]), dtype=dtype)
+        scale = torch.ones((1, values.shape[1]), dtype=dtype)
+    elif scheme_norm in {"minmax_0_1", "minmax01", "minmax"}:
+        vmin = values.amin(dim=0, keepdim=True)
+        vmax = values.amax(dim=0, keepdim=True)
+        shift = vmin
+        scale = vmax - vmin
+    elif scheme_norm in {"minmax_-1_1", "minmax11", "minmax_signed"}:
+        vmin = values.amin(dim=0, keepdim=True)
+        vmax = values.amax(dim=0, keepdim=True)
+        shift = (vmin + vmax) / 2.0
+        scale = (vmax - vmin) / 2.0
+    else:
+        raise ValueError(
+            "Unsupported dataset.feature_normalization scheme "
+            f"{scheme!r} (expected: standard, none, minmax_0_1, minmax_-1_1)"
+        )
+
+    scale = scale.to(dtype=dtype).clamp_min(1e-6)
+    shift = shift.to(dtype=dtype)
+    return shift, scale
+
+
 def _paper_data_dir(cfg: dict | None = None) -> Path:
     data_root = None
     if cfg is not None:
@@ -184,6 +228,7 @@ class WeatherSequenceDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         self.sequence_length = sequence_length
         self.prediction_horizon = prediction_horizon
         self.dtype = dtype
+        self.feature_normalization = "standard"
         # Normalization stats (populated later from the training split)
         self.feature_mean = torch.zeros((1, self.features.shape[1]), dtype=self.dtype)
         self.feature_std = torch.ones((1, self.features.shape[1]), dtype=self.dtype)
@@ -211,19 +256,36 @@ class WeatherSequenceDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         feature_std: torch.Tensor,
         target_mean: torch.Tensor,
         target_std: torch.Tensor,
+        *,
+        feature_normalization: str = "standard",
     ) -> None:
         self.feature_mean = feature_mean
         self.feature_std = feature_std
         self.target_mean = target_mean
         self.target_std = target_std
+        self.feature_normalization = str(feature_normalization)
 
     def compute_stats_for_indices(
         self, indices: list[int]
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        feature_tensor = torch.as_tensor(self.features[indices], dtype=self.dtype)
+        if not indices:
+            raise ValueError("indices must be non-empty")
+
+        # Each sample is a sliding window. For contiguous splits, the union of
+        # windows covers a contiguous time span; we approximate the covered range
+        # by [min_idx, max_idx + sequence_length).
+        start = int(min(indices))
+        end = int(max(indices)) + int(self.sequence_length)
+        end = min(end, int(self.features.shape[0]))
+
+        feature_tensor = torch.as_tensor(self.features[start:end], dtype=self.dtype)
         targets_tensor = torch.as_tensor(self.targets[indices], dtype=self.dtype)
-        feat_mean = feature_tensor.mean(dim=0, keepdim=True)
-        feat_std = feature_tensor.std(dim=0, keepdim=True).clamp_min(1e-6)
+
+        feat_mean, feat_std = _compute_feature_shift_scale(
+            feature_tensor,
+            scheme=self.feature_normalization,
+            dtype=self.dtype,
+        )
         tgt_mean = targets_tensor.mean()
         tgt_std = targets_tensor.std().clamp_min(1e-6)
         return feat_mean, feat_std, tgt_mean, tgt_std
@@ -249,6 +311,8 @@ class TensorSequenceDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         self.y = y.to(dtype=dtype)
         self.dtype = dtype
 
+        self.feature_normalization = "standard"
+
         input_size = int(self.x.shape[-1])
         self.feature_mean = torch.zeros((1, input_size), dtype=self.dtype)
         self.feature_std = torch.ones((1, input_size), dtype=self.dtype)
@@ -271,19 +335,25 @@ class TensorSequenceDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         feature_std: torch.Tensor,
         target_mean: torch.Tensor,
         target_std: torch.Tensor,
+        *,
+        feature_normalization: str = "standard",
     ) -> None:
         self.feature_mean = feature_mean
         self.feature_std = feature_std
         self.target_mean = target_mean
         self.target_std = target_std
+        self.feature_normalization = str(feature_normalization)
 
     def compute_stats_for_indices(
         self, indices: list[int]
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         subset_x = self.x[indices]
         flattened = subset_x.reshape(-1, subset_x.shape[-1])
-        feat_mean = flattened.mean(dim=0, keepdim=True)
-        feat_std = flattened.std(dim=0, keepdim=True).clamp_min(1e-6)
+        feat_mean, feat_std = _compute_feature_shift_scale(
+            flattened,
+            scheme=self.feature_normalization,
+            dtype=self.dtype,
+        )
         subset_y = self.y[indices]
         tgt_mean = subset_y.mean()
         tgt_std = subset_y.std().clamp_min(1e-6)
@@ -293,6 +363,10 @@ class TensorSequenceDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
 def build_dataloaders(cfg: dict) -> tuple[DataLoader, DataLoader, DataLoader, dict]:
     dataset_cfg = cfg.get("dataset", {})
     dtype = dtype_torch(cfg.get("dtype")) or torch.float32
+
+    feature_normalization = str(
+        dataset_cfg.get("feature_normalization", "minmax_-1_1")
+    )
 
     generator_cfg = dataset_cfg.get("generator")
     if generator_cfg is not None:
@@ -337,6 +411,7 @@ def build_dataloaders(cfg: dict) -> tuple[DataLoader, DataLoader, DataLoader, di
                     f"Generator produced input_size={x.shape[-1]} but feature_dim={feature_dim} was requested"
                 )
         dataset = TensorSequenceDataset(x, y, dtype=dtype)
+        dataset.feature_normalization = feature_normalization
 
         total_len = len(dataset)
         if total_len == 0:
@@ -351,7 +426,13 @@ def build_dataloaders(cfg: dict) -> tuple[DataLoader, DataLoader, DataLoader, di
         test_indices = list(range(val_cutoff, total_len))
 
         feat_mean, feat_std, tgt_mean, tgt_std = dataset.compute_stats_for_indices(train_indices)
-        dataset.set_normalization(feat_mean, feat_std, tgt_mean, tgt_std)
+        dataset.set_normalization(
+            feat_mean,
+            feat_std,
+            tgt_mean,
+            tgt_std,
+            feature_normalization=feature_normalization,
+        )
 
         train_ds = torch.utils.data.Subset(dataset, train_indices)
         val_ds = torch.utils.data.Subset(dataset, val_indices)
@@ -387,6 +468,7 @@ def build_dataloaders(cfg: dict) -> tuple[DataLoader, DataLoader, DataLoader, di
             "input_size": sample_input.shape[-1],
             "sequence_length": sequence_length,
             "prediction_horizon": 1,
+            "feature_normalization": feature_normalization,
             "feature_mean": dataset.feature_mean.squeeze().tolist(),
             "feature_std": dataset.feature_std.squeeze().tolist(),
             "target_mean": float(dataset.target_mean),
@@ -431,6 +513,7 @@ def build_dataloaders(cfg: dict) -> tuple[DataLoader, DataLoader, DataLoader, di
         prediction_horizon=prediction_horizon,
         dtype=dtype,
     )
+    dataset.feature_normalization = feature_normalization
 
     total_len = len(dataset)
     if total_len == 0:
@@ -448,7 +531,13 @@ def build_dataloaders(cfg: dict) -> tuple[DataLoader, DataLoader, DataLoader, di
     feat_mean, feat_std, tgt_mean, tgt_std = dataset.compute_stats_for_indices(
         train_indices
     )
-    dataset.set_normalization(feat_mean, feat_std, tgt_mean, tgt_std)
+    dataset.set_normalization(
+        feat_mean,
+        feat_std,
+        tgt_mean,
+        tgt_std,
+        feature_normalization=feature_normalization,
+    )
 
     train_ds = torch.utils.data.Subset(dataset, train_indices)
     val_ds = torch.utils.data.Subset(dataset, val_indices)
@@ -486,6 +575,7 @@ def build_dataloaders(cfg: dict) -> tuple[DataLoader, DataLoader, DataLoader, di
         "input_size": sample_input.shape[-1],
         "sequence_length": sequence_length,
         "prediction_horizon": prediction_horizon,
+        "feature_normalization": feature_normalization,
         "feature_mean": dataset.feature_mean.squeeze().tolist(),
         "feature_std": dataset.feature_std.squeeze().tolist(),
         "target_mean": float(dataset.target_mean),

@@ -213,7 +213,7 @@ def _run_one(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Compare QRNN models (rnn_baseline, gate_pqrnn, photonic_qrnn) on sin_tiny and airline_small. "
+            "Compare QRNN models (rnn_baseline, gate_pqrnn, photonic_qrnn) on sin_tiny, airline_small, and weather_small. "
             "Runs a small parameter sweep with fixed epochs and exports a CSV summary."
         )
     )
@@ -262,19 +262,60 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
 
+    parser.add_argument(
+        "--feature-normalization",
+        type=str,
+        default="minmax_-1_1",
+        help=(
+            "Feature normalization scheme used by the QRNN dataloaders. "
+            "Choices: standard (default), none, minmax_0_1, minmax_-1_1. "
+            "Use minmax_-1_1 when enabling --input-encoding=arccos."
+        ),
+    )
+    parser.add_argument(
+        "--input-encoding",
+        type=str,
+        default="arccos",
+        help=(
+            "Input-to-angle encoding applied inside gate_pqrnn and photonic_qrnn. "
+            "Choices: identity (default), arccos."
+        ),
+    )
+
     args = parser.parse_args(argv)
 
     epochs = int(args.epochs)
     seed = int(args.seed)
     base_outdir = Path(args.outdir).expanduser().resolve()
+    feature_norm = str(args.feature_normalization)
+    input_encoding = str(args.input_encoding)
 
     # Dataset baselines (we reuse dataset + training blocks from the existing configs).
     sin_base = _load_json(QRNN_DIR / "configs" / "sin_tiny_rnn.json")
     airline_base = _load_json(QRNN_DIR / "configs" / "airline_small_rnn.json")
+    weather_base = _load_json(QRNN_DIR / "configs" / "weather_strong_rnn.json")
+
+    # Keep weather runs reasonably small for the quantum models.
+    # (Gate pQRNN scales poorly with feature_dim due to density-matrix simulation.)
+    weather_base = dict(weather_base)
+    weather_dataset = dict(weather_base.get("dataset") or {})
+    weather_dataset.update(
+        {
+            "sequence_length": 12,
+            "prediction_horizon": int(weather_dataset.get("prediction_horizon", 1) or 1),
+            "max_rows": int(weather_dataset.get("max_rows") or 1200),
+            "batch_size": 16,
+            # Use a reduced feature set so feature_dim stays small.
+            # These columns exist after the szeged_weather preprocess.
+            "feature_columns": ["min_temperature", "avg_humidity", "month"],
+        }
+    )
+    weather_base["dataset"] = weather_dataset
 
     datasets = {
         "sin_tiny": sin_base,
         "airline_small": airline_base,
+        "weather_small": weather_base,
     }
 
     planned: list[tuple[str, str, dict[str, Any], dict[str, Any], str | None]] = []
@@ -316,8 +357,8 @@ def main(argv: list[str] | None = None) -> int:
                 "kd": int(gate_kd),
                 "kh": int(p["kh"]),
                 "depth": int(p["depth"]),
-                "entangling": "nn",
-                "shots": 0,
+                "entangling": "cb",
+                "entangling_wrap": True,
             }
             # Gate-based runs are more stable in float64.
             planned.append((ds_name, "gate_pqrnn", model_params, training_cfg, "float64"))
@@ -361,7 +402,12 @@ def main(argv: list[str] | None = None) -> int:
     ):
         sweep = _sweep_tag(model_params)
         ds_base = datasets[ds_name]
-        dataset_cfg = ds_base.get("dataset") or {}
+        dataset_cfg = dict(ds_base.get("dataset") or {})
+        dataset_cfg["feature_normalization"] = feature_norm
+
+        if model_name in {"gate_pqrnn", "photonic_qrnn"}:
+            model_params = dict(model_params)
+            model_params["input_encoding"] = input_encoding
 
         desc = f"sweep compare | dataset={ds_name} model={model_name} | {sweep}"
         cfg = _make_config(

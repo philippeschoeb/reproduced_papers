@@ -91,6 +91,20 @@
       "type": "bool",
       "default": null,
       "apply": {"kind": "config_path", "path": "training.early_stopping.enabled"}
+    },
+    {
+      "flags": ["--feature-normalization"],
+      "help": "Feature normalization scheme: standard|none|minmax_0_1|minmax_-1_1 (default: minmax_-1_1)",
+      "type": "str",
+      "default": "minmax_-1_1",
+      "apply": {"kind": "config_path", "path": "dataset.feature_normalization"}
+    },
+    {
+      "flags": ["--input-encoding"],
+      "help": "Input-to-angle encoding for quantum models: identity|arccos (default: arccos)",
+      "type": "str",
+      "default": "arccos",
+      "apply": {"kind": "config_path", "path": "model.params.input_encoding"}
     }
   ]
 }

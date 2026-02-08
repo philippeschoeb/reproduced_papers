@@ -20,6 +20,7 @@ import json
 import sys
 from collections.abc import Iterable
 from pathlib import Path
+import re
 
 import numpy as np
 import pandas as pd
@@ -48,8 +49,8 @@ def _load_config(run_dir: Path) -> dict:
 def _build_title(cfg: dict, run_dirs: list[Path]) -> str:
     dataset_name = cfg.get("dataset", {}).get("name", "dataset")
     model_name = cfg.get("model", {}).get("name", "model")
-    labels = ", ".join(rd.name for rd in run_dirs)
-    return f"Predictions overlay — {dataset_name} ({model_name}) — {labels}"
+
+    return f"Predictions overlay — {dataset_name} ({model_name})"
 
 
 def _parse_labels(labels_csv: str | None, *, expected: int) -> list[str] | None:
@@ -162,7 +163,23 @@ def plot_runs(
         _assert_compatibility(base_ordered, ordered)
         ordered_dfs.append(ordered)
 
-    plt.figure(figsize=(12, 5))
+    fig, ax = plt.subplots(figsize=(12, 5))
+
+    def _timestamp_for(run_dir: Path) -> str | None:
+        for cand in (run_dir, *list(run_dir.parents)[:4]):
+            name = cand.name
+            match = re.match(r"^run_(\d{8}-\d{6})$", name)
+            if match:
+                return match.group(1)
+        return None
+
+    def _legend_label(run_dir: Path, base_label: str) -> str:
+        stamp = _timestamp_for(run_dir)
+        if stamp is None:
+            return base_label
+        if stamp in base_label:
+            return base_label
+        return f"{base_label} ({stamp})"
 
     combined = pd.concat(ordered_dfs, ignore_index=True)
     ymin, ymax = (
@@ -177,10 +194,10 @@ def plot_runs(
     start = 0
     for split in splits:
         end = boundaries.get(split, len(base_ordered))
-        plt.axvspan(
+        ax.axvspan(
             start, end, color=colors.get(split, "#f5f5f5"), alpha=0.4, label=None
         )
-        plt.text(
+        ax.text(
             (start + end) / 2,
             ymax - ypad,
             split,
@@ -191,7 +208,7 @@ def plot_runs(
         )
         start = end
 
-    plt.plot(
+    ax.plot(
         base_ordered["step"],
         base_ordered["target"],
         label="reference",
@@ -200,17 +217,32 @@ def plot_runs(
     )
     for idx, ordered in enumerate(ordered_dfs):
         if labels is not None:
-            label = labels[idx]
+            base_label = labels[idx]
         else:
-            label = ordered["run"].iloc[0] if "run" in ordered else "prediction"
-        plt.plot(ordered["step"], ordered["prediction"], label=label, linewidth=1.5)
+            base_label = ordered["run"].iloc[0] if "run" in ordered else "prediction"
+        label = _legend_label(run_dirs[idx], base_label)
+        ax.plot(ordered["step"], ordered["prediction"], label=label, linewidth=1.5)
 
-    plt.title(_build_title(cfg, run_dirs))
-    plt.xlabel("sequence index (train → val → test)")
-    plt.ylabel(y_label)
-    plt.ylim([ymin, ymax])
-    plt.legend()
-    plt.tight_layout()
+    ax.set_title(_build_title(cfg, run_dirs))
+    ax.set_xlabel("sequence index (train → val → test)")
+    ax.set_ylabel(y_label)
+    ax.set_ylim([ymin, ymax])
+
+    handles, legend_labels = ax.get_legend_handles_labels()
+    if handles:
+        ncol = 1
+        fig.legend(
+            handles,
+            legend_labels,
+            loc="lower center",
+            bbox_to_anchor=(0.5, -0.02),
+            ncol=ncol,
+            fontsize=9,
+            frameon=False,
+        )
+
+    bottom = 0.12 + 0.02 * min(len(handles), 10)
+    fig.tight_layout(rect=[0, bottom, 1, 1])
 
     if out_path is None:
         suffix = (

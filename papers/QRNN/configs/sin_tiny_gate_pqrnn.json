@@ -24,7 +24,8 @@
     "train_ratio": 0.7,
     "val_ratio": 0.15,
     "batch_size": 16,
-    "shuffle": false
+    "shuffle": false,
+    "feature_normalization": "minmax_-1_1"
   },
   "model": {
     "name": "gate_pqrnn",
@@ -32,8 +33,9 @@
       "kd": 2,
       "kh": 1,
       "depth": 1,
-      "entangling": "nn",
-      "shots": 0
+      "entangling": "cb",
+      "entangling_wrap": true,
+      "input_encoding": "arccos"
     }
   },
   "training": {

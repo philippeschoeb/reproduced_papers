@@ -7,6 +7,8 @@ from typing import Optional
 import torch
 from torch import nn
 
+from .angle_encoding import apply_input_encoding
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,9 +31,10 @@ class GatePQRNNConfig:
     n_data: int
     n_hidden: int
     depth: int = 1
-    entangling: str = "nn"  # nn|all
-    shots: int = 0  # unused (analytic mode)
+    entangling: str = "cb"  # cb|nn|all
+    entangling_wrap: bool = True
     dtype: Optional[torch.dtype] = None
+    input_encoding: str = "identity"  # identity|arccos
 
 
 def _zero_density_matrix(n_qubits: int, *, complex_dtype: torch.dtype) -> torch.Tensor:
@@ -76,9 +79,10 @@ class GatePQRNNCell(nn.Module):
             )
 
         entangling = str(config.entangling).strip().lower()
-        if entangling not in {"nn", "all"}:
-            raise ValueError("entangling must be one of: 'nn', 'all'")
+        if entangling not in {"cb", "nn", "all"}:
+            raise ValueError("entangling must be one of: 'cb', 'nn', 'all'")
         self.entangling = entangling
+        self.entangling_wrap = bool(config.entangling_wrap)
 
         # Trainable parameters.
         depth = int(config.depth)
@@ -115,8 +119,12 @@ class GatePQRNNCell(nn.Module):
             return []
         if self.entangling == "all":
             return [(i, j) for i in range(self.n_total) for j in range(i + 1, self.n_total)]
-        # nearest-neighbor on the full register
-        return [(i, i + 1) for i in range(self.n_total - 1)]
+        # Nearest-neighbor chain on the full register.
+        edges = [(i, i + 1) for i in range(self.n_total - 1)]
+        # CB connectivity (paper): chain + optional wrap-around (0, N-1).
+        if self.entangling == "cb" and self.entangling_wrap and self.n_total > 2:
+            edges.append((0, self.n_total - 1))
+        return edges
 
     def _pad_features(self, x_batch: torch.Tensor) -> torch.Tensor:
         if x_batch.shape[-1] == self.n_data:
@@ -164,8 +172,10 @@ class GatePQRNNCell(nn.Module):
                     qml.RX(rot[layer, w, 2], wires=w)
 
                 for e_idx, (a, b) in enumerate(edges):
-                    # IsingZZ(phi) ~ exp(-i phi/2 Z⊗Z)
-                    qml.IsingZZ(zz[layer, e_idx], wires=[a, b])
+                    # Paper gate: Rzz(theta) = exp(i theta Z⊗Z)
+                    # PennyLane: IsingZZ(phi) = exp(-i phi/2 Z⊗Z)
+                    # => phi = -2 * theta
+                    qml.IsingZZ(-2.0 * zz[layer, e_idx], wires=[a, b])
 
             exp_z = qml.expval(qml.PauliZ(d_wires[0]))
             rho_h_out = qml.density_matrix(wires=h_wires) if self.n_hidden > 0 else qml.density_matrix(wires=[])
@@ -186,6 +196,7 @@ class GatePQRNNCell(nn.Module):
 
         x_batch = self._pad_features(x_batch)
         x_angles = x_batch[0].to(dtype=self._dtype)
+        x_angles = apply_input_encoding(x_angles, self.config.input_encoding)
 
         if self._qnode is None:
             self._build_qnode()

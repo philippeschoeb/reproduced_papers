@@ -25,7 +25,8 @@
         "train_ratio": 0.7,
         "val_ratio": 0.15,
         "batch_size": 16,
-        "shuffle": true
+        "shuffle": true,
+        "feature_normalization": "minmax_-1_1"
     },
     "model": {
         "name": "rnn_baseline",

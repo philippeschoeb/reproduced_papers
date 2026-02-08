@@ -11,6 +11,7 @@ import merlin as ml
 
 from merlin.core.partial_measurement import PartialMeasurement
 
+from .angle_encoding import apply_input_encoding
 from .qrb_circuit import QRBCircuitSpec, build_qrb_circuit
 from .qrb_readout import (
     ReadoutSpec,
@@ -29,6 +30,7 @@ class PhotonicQRNNConfig:
     depth: int = 1  # number of QRB layers per time step
     shots: int = 0  # 0 => full statevector
     dtype: Optional[torch.dtype] = None
+    input_encoding: str = "identity"  # identity|arccos
     # Post-selection / computational subspace for the measured D register.
     # - "dual_rail": outcomes correspond to bitstrings (size 2**kd)
     # - "unbunched": outcomes are any 0/1 occupation patterns with kd photons (size binom(2kd, kd))
@@ -244,6 +246,7 @@ class PhotonicQRNNCell(nn.Module):
             )
 
         x_batch = self._pad_features_to_required(x_batch)
+        x_batch = apply_input_encoding(x_batch.to(dtype=self._dtype), self.config.input_encoding)
 
         kh = int(self.config.kh)
         depth = int(self.config.depth)

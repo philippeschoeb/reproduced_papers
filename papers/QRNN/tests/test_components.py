@@ -229,6 +229,40 @@ def test_gate_pqrnn_forward_and_backward():
     assert model.cell.readout.weight.grad is not None
 
 
+def test_feature_normalization_minmax_signed_keeps_range():
+    from lib.data import build_dataloaders
+
+    cfg = {
+        "dtype": "float64",
+        "dataset": {
+            "generator": {
+                "name": "sin",
+                "params": {
+                    "frequency": 0.2,
+                    "amplitude": 1.0,
+                    "phase": 0.0,
+                    "t_max": 10,
+                    "n_points": 51,
+                    "noise_std": 0.0,
+                },
+                "feature_dim": 1,
+            },
+            "sequence_length": 6,
+            "train_ratio": 0.7,
+            "val_ratio": 0.15,
+            "batch_size": 8,
+            "shuffle": False,
+            "feature_normalization": "minmax_-1_1",
+        },
+    }
+
+    train_loader, _val_loader, _test_loader, _metadata = build_dataloaders(cfg)
+    x, _y = next(iter(train_loader))
+    assert torch.isfinite(x).all()
+    assert x.min().item() >= -1.0001
+    assert x.max().item() <= 1.0001
+
+
 def _has_perceval_and_matplotlib() -> bool:
     try:
         import perceval as _  # noqa: F401

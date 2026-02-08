@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -142,10 +143,23 @@ def plot_runs(
     maybe_use_agg_backend(show=show)
     import matplotlib.pyplot as plt
 
-    plt.figure(figsize=(12, 5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
-    ax1 = plt.subplot(1, 2, 1)
-    ax2 = plt.subplot(1, 2, 2)
+    def _timestamp_for(run_dir: Path) -> str | None:
+        for cand in (run_dir, *list(run_dir.parents)[:4]):
+            name = cand.name
+            match = re.match(r"^run_(\d{8}-\d{6})$", name)
+            if match:
+                return match.group(1)
+        return None
+
+    def _legend_label(run_dir: Path, base_label: str) -> str:
+        stamp = _timestamp_for(run_dir)
+        if stamp is None:
+            return base_label
+        if stamp in base_label:
+            return base_label
+        return f"{base_label} ({stamp})"
 
     for idx, run_dir in enumerate(run_dirs):
         history = _load_history(run_dir)
@@ -154,7 +168,8 @@ def plot_runs(
         test_acc = _series(history, "test_accuracy")
         test_loss = _series(history, "test_loss")
 
-        label = labels[idx] if labels is not None else run_dir.name
+        base_label = labels[idx] if labels is not None else run_dir.name
+        label = _legend_label(run_dir, base_label)
 
         ax1.plot(epochs, test_acc, label=label, linewidth=1.8)
         ax2.plot(epochs, test_loss, label=label, linewidth=1.8)
@@ -175,13 +190,29 @@ def plot_runs(
     ax2.set_ylabel("test_loss")
     ax2.grid(True, alpha=0.25)
 
-    title = "Time-series learning curves"
+    base_title = "Time-series learning curves"
     if include_val:
-        title += " (solid=test, dashed=val)"
-    plt.suptitle(title)
+        base_title += " (solid=test, dashed=val)"
 
-    ax1.legend(loc="lower right")
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    fig.suptitle(base_title)
+
+    handles, legend_labels = ax1.get_legend_handles_labels()
+    if handles:
+        # Put the legend under both subplots so it doesn't cover curves.
+        ncol = 1
+        fig.legend(
+            handles,
+            legend_labels,
+            loc="lower center",
+            bbox_to_anchor=(0.5, -0.02),
+            ncol=ncol,
+            fontsize=9,
+            frameon=False,
+        )
+
+    # Leave room at the bottom for the legend.
+    bottom = 0.12 + 0.02 * min(len(handles), 10)
+    fig.tight_layout(rect=[0, bottom, 1, 0.95])
 
     if out_path is None:
         suffix = "metrics_overlay.png" if len(run_dirs) > 1 else "metrics_plot.png"

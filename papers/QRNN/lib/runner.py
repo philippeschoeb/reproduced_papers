@@ -39,13 +39,20 @@ def _build_model(cfg: dict, input_size: int) -> nn.Module:
         kd = params.get("kd", params.get("n_data", 2))
         kh = params.get("kh", params.get("n_hidden", 1))
 
+        if "shots" in params and params.get("shots") not in (0, None):
+            logger.warning(
+                "Ignoring model.params.shots=%r for gate_pqrnn (analytic mode only).",
+                params.get("shots"),
+            )
+
         gate_cfg = GatePQRNNConfig(
             n_data=int(kd),
             n_hidden=int(kh),
             depth=int(params.get("depth", 1)),
-            entangling=str(params.get("entangling", "nn")),
-            shots=int(params.get("shots", 0)),
+            entangling=str(params.get("entangling", "cb")),
+            entangling_wrap=bool(params.get("entangling_wrap", True)),
             dtype=dtype_torch(cfg.get("dtype")),
+            input_encoding=str(params.get("input_encoding", "identity")),
         )
         return GatePQRNNRegressor(input_size=input_size, config=gate_cfg)
 
@@ -75,6 +82,7 @@ def _build_model(cfg: dict, input_size: int) -> nn.Module:
             shots=int(params.get("shots", 0)),
             dtype=dtype_torch(cfg.get("dtype")),
             measurement_space=str(params.get("measurement_space", "dual_rail")),
+            input_encoding=str(params.get("input_encoding", "identity")),
         )
         return PhotonicQRNNRegressor(input_size=input_size, config=photonic_cfg)
 
@@ -125,7 +133,7 @@ def train_and_evaluate(cfg: dict, run_dir: Path) -> None:
 
     if model_name == "photonic_qrnn":
         logger.info(
-            "Model summary | model=%s kd=%s kh=%s depth=%s shots=%s measurement_space=%s | "
+            "Model summary | model=%s kd=%s kh=%s depth=%s shots=%s measurement_space=%s input_encoding=%s | "
             "epochs=%d lr=%g opt=%s",
             model_name,
             model_params.get("kd"),
@@ -133,18 +141,20 @@ def train_and_evaluate(cfg: dict, run_dir: Path) -> None:
             model_params.get("depth"),
             model_params.get("shots"),
             model_params.get("measurement_space"),
+            model_params.get("input_encoding", "identity"),
             cfg.get("training", {}).get("epochs"),
             cfg.get("training", {}).get("lr"),
             cfg.get("training", {}).get("optimizer", "adam"),
         )
     elif model_name in {"gate_pqrnn", "pqrnn_gate", "pqrnn"}:
         logger.info(
-            "Model summary | model=%s kd=%s kh=%s depth=%s entangling=%s | epochs=%d lr=%g opt=%s",
+            "Model summary | model=%s kd=%s kh=%s depth=%s entangling=%s input_encoding=%s | epochs=%d lr=%g opt=%s",
             model_name,
             model_params.get("kd", model_params.get("n_data")),
             model_params.get("kh", model_params.get("n_hidden")),
             model_params.get("depth"),
-            model_params.get("entangling", "nn"),
+            model_params.get("entangling", "cb"),
+            model_params.get("input_encoding", "identity"),
             cfg.get("training", {}).get("epochs"),
             cfg.get("training", {}).get("lr"),
             cfg.get("training", {}).get("optimizer", "adam"),

@@ -37,6 +37,7 @@ Figure: photonic circuit used by the QRB block (example shown for a 2-level QRB)
 The implementation follows the design decisions we settled on for the QRB/QRNN block:
 
 - **Encoding:** the input at time step `t` (denoted `x_t`) is assumed to have dimension `2*kd` and is mapped **directly** to `2*kd` phase shifters on the D register (dual-rail modes). Concretely, `x_t[i]` sets the phase of parameter `in_i`.
+	- Optionally, you can enable `model.params.input_encoding="arccos"` to apply $\theta=\arccos(x)$ before setting phase shifters. If you do, prefer `dataset.feature_normalization="minmax_-1_1"` to keep inputs in $[-1,1]`.
 - **Partial measurement:** after the QRB circuit, we apply **partial measurement** on the D register (the first `2*kd` modes). The post-selected computation space is controlled by `measurement_space` (dual-rail by default).
 - **Readout:** we keep the full measurement outcome space for the chosen post-selection. Let `p_t` be the probability vector over these outcomes. The model predicts
 	`y_t = Linear(p_t)`, i.e. a trainable `torch.nn.Linear(len(p_t), 1)`.
@@ -101,7 +102,8 @@ Enable it with:
 			"kd": 2,
 			"kh": 1,
 			"depth": 1,
-			"entangling": "nn"
+				"entangling": "cb",
+				"entangling_wrap": true
 		}
 	}
 }
@@ -247,6 +249,9 @@ Dataset fields (`dataset.*`)
 - `dataset.batch_size` (int): training batch size.
 	- Photonic prototype note: batching is supported but evaluated sequentially (performance can be dominated by the quantum simulation).
 - `dataset.shuffle` (bool): whether to shuffle samples when building the dataloaders.
+- `dataset.feature_normalization` (str): feature normalization scheme applied using training-split statistics.
+	- Supported: `"standard"`, `"none"`, `"minmax_0_1"`, `"minmax_-1_1"`.
+	- Default for QRNN configs/CLI in this repo: `"minmax_-1_1"` (recommended for the paper-style $\arccos$ embedding).
 
 Training fields (`training.*`)
 
@@ -279,8 +284,48 @@ Photonic QRNN model fields (`model.name="photonic_qrnn"`, `model.params.*`)
 - `measurement_space` (str): post-selection space for the measured D register.
 	- `"dual_rail"`: outcome space size `2**kd`.
 	- `"unbunched"`: outcome space size `binom(2*kd, kd)`.
-	- `"all"` (default): exact branching (can grow exponentially).
-	- `"argmax"`: keep only the most likely branch (fast approximation).
+- `input_encoding` (str): optional input-to-angle encoding before setting the `2*kd` phase shifters.
+	- `"identity"` (default): uses features directly as phase angles.
+	- `"arccos"`: uses $\theta=\arccos(x)$ (paper-style). Prefer `dataset.feature_normalization="minmax_-1_1"`.
+
+Gate-based pQRNN model fields (`model.name="gate_pqrnn"`, `model.params.*`)
+
+- `kd` (int): number of qubits in the data register D.
+	- Input feature dimension must satisfy `feature_dim <= kd`.
+	- If fewer than `kd` features are provided, the model pads missing features with zeros.
+- `kh` (int): number of qubits in the hidden register H.
+	- `kh=0` is supported (degenerate “no memory” case).
+- `depth` (int): number of ansatz layers applied at each time step.
+	- Each layer applies `RX-RZ-RX` on every qubit in D∪H, followed by `IsingZZ` entanglers.
+- `entangling` (str): entangling connectivity for `IsingZZ` gates.
+	- `"cb"` (default): Circuit-Block (CB) pattern from the paper: nearest-neighbor chain + optional wrap-around `(0, N-1)` over the full D∪H register.
+	- `"nn"`: nearest-neighbor chain over the full D∪H register (no wrap-around).
+	- `"all"`: all-to-all connectivity.
+- `entangling_wrap` (bool): only used when `entangling="cb"`.
+	- `true` (default): include the wrap-around edge `(0, N-1)` when `N>2`.
+	- `false`: disable wrap-around.
+- `input_encoding` (str): feature-to-angle encoding applied before `RY` on the D register.
+	- `"identity"` (default): uses features directly as rotation angles.
+	- `"arccos"`: uses $\theta=\arccos(x)$ (paper-style). Prefer `dataset.feature_normalization="minmax_-1_1"`.
+
+Implementation details (gate pQRNN)
+
+- **Backend:** PennyLane `default.mixed` in analytic mode.
+- **Encoding:** `RY(theta_i)` on each D qubit (after zero-padding up to `kd`), where `theta_i` depends on `model.params.input_encoding`.
+- **Readout:** probability $p(1)$ on the first D qubit (computed from $\langle Z\rangle$ via $p(1)=(1-\langle Z\rangle)/2$), then a trainable linear layer.
+- **Hidden propagation:** the hidden register is propagated exactly as a reduced density matrix $\rho_H$.
+
+Important convention note (gate pQRNN)
+
+- The paper uses $R_{zz}(\theta)=e^{i\theta Z\otimes Z}$.
+- PennyLane uses `qml.IsingZZ(phi)=exp(-i*phi/2*Z\otimes Z)`.
+- The implementation therefore applies `qml.IsingZZ(-2*theta)` internally (the trainable parameter stored is $\theta$ in the paper’s convention).
+
+Limitations / gotchas
+
+- `shots` is intentionally **not supported** for `gate_pqrnn` (analytic mode only).
+- The internal cell currently runs with `batch_size==1` at the quantum step; the regressor loops over the batch.
+- Use `dtype="float64"` for stability and to match the PennyLane mixed-state backend.
 
 ## Results and Next Steps
 
