@@ -1,5 +1,5 @@
 {
-  "description": "Default vanilla RNN baseline on the airline-passengers dataset (shared data/time_series)",
+  "description": "Small vanilla RNN baseline on the airline-passengers dataset (shared data/time_series)",
   "dataset": {
     "name": "airline_passengers",
     "path": "../time_series/airline-passengers.csv",
@@ -8,12 +8,12 @@
     "time_column": "Month",
     "target_column": "Passengers",
     "feature_columns": ["Passengers"],
-    "sequence_length": 12,
+    "sequence_length": 4,
     "prediction_horizon": 1,
     "train_ratio": 0.7,
     "val_ratio": 0.15,
     "batch_size": 16,
-    "shuffle": true
+    "shuffle": false
   },
   "model": {
     "params": {
@@ -26,7 +26,7 @@
     }
   },
   "training": {
-    "epochs": 80,
+    "epochs": 20,
     "optimizer": "adam",
     "lr": 0.001,
     "weight_decay": 0.0,

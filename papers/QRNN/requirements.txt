@@ -4,5 +4,6 @@ kagglehub>=0.2.5
 numpy>=1.26
 matplotlib>=3.7
 merlinquantum
+pennylane>=0.36
 pytest
 

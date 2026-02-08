@@ -123,6 +123,34 @@ def test_photonic_qrnn_supports_batched_forward_and_backward():
     assert model.cell.readout.weight.grad is not None
 
 
+def test_photonic_qrnn_pads_missing_features_with_zeros():
+    if not _has_merlin():
+        return
+
+    from lib.photonic_qrnn import PhotonicQRNNConfig, PhotonicQRNNRegressor
+
+    torch.manual_seed(0)
+
+    cfg = PhotonicQRNNConfig(
+        kd=1,
+        kh=1,
+        depth=1,
+        shots=0,
+        dtype=torch.float32,
+        measurement_space="dual_rail",
+    )
+    # Dataset provides only 1 feature; model will pad to 2*kd=2.
+    model = PhotonicQRNNRegressor(input_size=1, config=cfg)
+
+    x = torch.randn(2, 3, 1)
+    y = model(x)
+    assert y.shape == (2,)
+
+    loss = y.sum()
+    loss.backward()
+    assert model.cell.readout.weight.grad is not None
+
+
 def test_photonic_training_per_sample_steps_with_batched_loader():
     if not _has_merlin():
         return
@@ -164,6 +192,41 @@ def test_photonic_training_per_sample_steps_with_batched_loader():
     train_one_epoch(model, loader, crit, opt, device)
     # Default is per-sample stepping for photonic models when batch_size > 1.
     assert opt.step_calls == 2
+
+
+def _has_pennylane() -> bool:
+    try:
+        import pennylane as _  # noqa: F401
+
+        return True
+    except Exception:
+        return False
+
+
+def test_gate_pqrnn_forward_and_backward():
+    if not _has_pennylane():
+        return
+
+    from lib.gate_pqrnn import GatePQRNNConfig, GatePQRNNRegressor
+
+    torch.manual_seed(0)
+
+    cfg = GatePQRNNConfig(
+        n_data=2,
+        n_hidden=1,
+        depth=1,
+        entangling="nn",
+        dtype=torch.float64,
+    )
+    model = GatePQRNNRegressor(input_size=2, config=cfg)
+
+    x = torch.randn(2, 3, 2, dtype=torch.float64)
+    y = model(x)
+    assert y.shape == (2,)
+
+    loss = y.sum()
+    loss.backward()
+    assert model.cell.readout.weight.grad is not None
 
 
 def _has_perceval_and_matplotlib() -> bool:

@@ -24,6 +24,31 @@ def _build_model(cfg: dict, input_size: int) -> nn.Module:
     name = str(model_cfg.get("name", "rnn_baseline")).strip().lower()
     params = model_cfg.get("params", {})
 
+    if name in {"gate_pqrnn", "pqrnn_gate", "pqrnn"}:
+        try:
+            from .gate_pqrnn import GatePQRNNConfig, GatePQRNNRegressor
+        except Exception as exc:
+            raise RuntimeError(
+                "gate_pqrnn model requires PennyLane. Install it (pip install pennylane), "
+                "or use model.name='rnn_baseline' / 'photonic_qrnn'."
+            ) from exc
+
+        # Parameter naming convention: align with the photonic QRNN where possible.
+        # - Prefer kd/kh (logical data/hidden size)
+        # - Keep n_data/n_hidden as backwards-compatible aliases
+        kd = params.get("kd", params.get("n_data", 2))
+        kh = params.get("kh", params.get("n_hidden", 1))
+
+        gate_cfg = GatePQRNNConfig(
+            n_data=int(kd),
+            n_hidden=int(kh),
+            depth=int(params.get("depth", 1)),
+            entangling=str(params.get("entangling", "nn")),
+            shots=int(params.get("shots", 0)),
+            dtype=dtype_torch(cfg.get("dtype")),
+        )
+        return GatePQRNNRegressor(input_size=input_size, config=gate_cfg)
+
     if name == "photonic_qrnn":
         try:
             from .photonic_qrnn import PhotonicQRNNConfig, PhotonicQRNNRegressor
@@ -112,6 +137,18 @@ def train_and_evaluate(cfg: dict, run_dir: Path) -> None:
             cfg.get("training", {}).get("lr"),
             cfg.get("training", {}).get("optimizer", "adam"),
         )
+    elif model_name in {"gate_pqrnn", "pqrnn_gate", "pqrnn"}:
+        logger.info(
+            "Model summary | model=%s kd=%s kh=%s depth=%s entangling=%s | epochs=%d lr=%g opt=%s",
+            model_name,
+            model_params.get("kd", model_params.get("n_data")),
+            model_params.get("kh", model_params.get("n_hidden")),
+            model_params.get("depth"),
+            model_params.get("entangling", "nn"),
+            cfg.get("training", {}).get("epochs"),
+            cfg.get("training", {}).get("lr"),
+            cfg.get("training", {}).get("optimizer", "adam"),
+        )
     else:
         logger.info(
             "Model summary | model=%s cell=%s hidden=%s layers=%s dropout=%s bidi=%s | epochs=%d lr=%g opt=%s",
@@ -127,11 +164,11 @@ def train_and_evaluate(cfg: dict, run_dir: Path) -> None:
         )
 
     dtype = dtype_torch(cfg.get("dtype"))
-    is_photonic = model_name == "photonic_qrnn"
-    if dtype is not None and not is_photonic:
+    is_quantum = model_name in {"photonic_qrnn", "gate_pqrnn", "pqrnn_gate", "pqrnn"}
+    if dtype is not None and not is_quantum:
         model = model.to(dtype=dtype)
 
-    if is_photonic:
+    if model_name == "photonic_qrnn":
         try:
             from .perceval_export import export_qrb_circuit_svg
 
@@ -152,7 +189,7 @@ def train_and_evaluate(cfg: dict, run_dir: Path) -> None:
         model, train_loader, val_loader, test_loader, cfg_with_metadata, run_dir
     )
 
-    model_path = run_dir / "rnn_baseline.pt"
+    model_path = run_dir / f"{model_name}.pt"
     torch.save(model.state_dict(), model_path)
     logger.info("Saved model checkpoint to %s", model_path)
 

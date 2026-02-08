@@ -15,9 +15,10 @@ This project bootstraps a reproduction of the paper on quantum recurrent neural 
 This implementation (see [QRNN.md]) provides two model families for comparison:
 
 - a **classical RNN baseline** for sequence forecasting on meteorological time-series data
+- a **gate-based pQRNN implementation** (PennyLane) following the paper's QRB/pQRNN description
 - an **experimental photonic QRNN prototype** using partial measurement to propagate a hidden photonic register
 
-Note: the paper also discusses a gate-based QRNN variant; this gate-based model is **not** reimplemented in this repository.
+Note: the paper also discusses a gate-based QRNN variant. This repository implements the pQRNN (plain QRNN) form in PennyLane under `model.name="gate_pqrnn"`.
 
 Datasets and evaluation focus:
 
@@ -28,6 +29,10 @@ Datasets and evaluation focus:
 ### Photonic QRNN (experimental)
 
 In addition to the classical baseline, this paper folder now includes an **experimental photonic QRNN prototype** implemented with MerLin/Perceval.
+
+![Photonic QRNN circuit (2-level QRB block)](photonic-qrnn.svg)
+
+Figure: photonic circuit used by the QRB block (example shown for a 2-level QRB), including encoding, trainable phases, and partial measurement.
 
 The implementation follows the design decisions we settled on for the QRB/QRNN block:
 
@@ -66,13 +71,43 @@ To enable the photonic model, set the model block in your config to:
 }
 ```
 
-Important: when `model.name="photonic_qrnn"`, the dataset feature dimension must satisfy `len(dataset.feature_columns) == 2*kd`.
+Important: when `model.name="photonic_qrnn"`, the dataset feature dimension must satisfy `len(dataset.feature_columns) <= 2*kd`.
+
+- If fewer than `2*kd` features are provided, the photonic model will **pad the missing features with zeros**.
+- If more than `2*kd` features are provided, the run fails with a `ValueError`.
 
 Implementation entry points:
 
 - QRB circuit construction: `lib/qrb_circuit.py`
 - Partial-measurement readout utilities: `lib/qrb_readout.py`
 - Model: `lib/photonic_qrnn.py`
+
+### Gate-based pQRNN (PennyLane)
+
+This folder also includes a gate-based implementation of the pQRNN described in [QRNN.md].
+
+- **Encoding:** angle encoding via `RY` on the D register (`kd` qubits)
+- **Ansatz:** hardware-efficient layers on D∪H using `RX-RZ-RX` per qubit + `IsingZZ` entanglers
+- **Readout:** probability $p(1)$ on the first D qubit (converted from $\langle Z\rangle$), then a trainable linear layer
+- **Hidden-state propagation:** exact reduced density matrix $\rho_H$ (no branching)
+
+Enable it with:
+
+```json
+{
+	"model": {
+		"name": "gate_pqrnn",
+		"params": {
+			"kd": 2,
+			"kh": 1,
+			"depth": 1,
+			"entangling": "nn"
+		}
+	}
+}
+```
+
+Example config: `configs/sin_tiny_gate_pqrnn.json`.
 
 ## How to Run
 
@@ -118,6 +153,24 @@ python ../../implementation.py --config configs/damped_shm_default_rnn.json --ep
 python implementation.py --paper QRNN --outdir runs/qrnn_baseline
 ```
 
+### Quick comparison sweep (paper utilities)
+
+To compare `rnn_baseline`, `gate_pqrnn`, and `photonic_qrnn` on `sin_tiny` and `airline_small` with a small parameter sweep (default: 5 epochs), use:
+
+```bash
+# From the repo root
+python papers/QRNN/utils/compare_qrnn_models.py --epochs 5
+
+# Optional: cap runs while debugging
+python papers/QRNN/utils/compare_qrnn_models.py --dry-run --epochs 5 --max-runs 5
+```
+
+The script writes a `summary.csv` under `papers/QRNN/outdir/qrnn_compare/compare_seed{seed}_e{epochs}/` (config files are exported in `sweep_configs/`).
+
+At the end of the sweep, it also saves two overlay plots per dataset next to `summary.csv`:
+- `<dataset>__metrics_overlay.png` (test curves + val dashed)
+- `<dataset>__predictions_overlay.png` (prediction traces vs reference)
+
 ### Dataset setup & preprocessing
 
 - Datasets are stored under the shared data root: by default `data/` at the repo root. For relative `dataset.path` values, QRNN first looks under `data/QRNN/` and, if the file is not found there, falls back to `data/time_series/` for shared time-series CSVs. You can override the base location with `DATA_DIR=/abs/path` or `python implementation.py --data-root /abs/path ...`.
@@ -143,6 +196,10 @@ Plotting scripts are shared across papers under `papers/shared/time_series/`:
 
 - `python -m papers.shared.time_series.plot_predictions <run_dir>`
 - `python -m papers.shared.time_series.plot_metrics <run_dir>`
+
+Convenience wrappers (QRNN-local):
+- `python papers/QRNN/utils/plot_predictions.py <run_dir>`
+- `python papers/QRNN/utils/plot_metrics.py <run_dir>`
 
 Training on the Airline Passengers dataset: use `configs/airline_default_rnn.json` (baseline) or `configs/airline_strong_rnn.json` (stronger). Canonical path is `data/time_series/airline-passengers.csv`.
 
@@ -181,8 +238,8 @@ Dataset fields (`dataset.*`)
 	- `dataset.generator.name` (str): generator key (e.g. `"sin"`).
 	- `dataset.generator.params` (obj): generator-specific parameters.
 	- `dataset.generator.feature_dim` (int, optional): number of features per time step.
-		- For the photonic QRNN, this must be exactly `2*kd`.
-		- When the generator produces a 1D signal, the current pipeline places it in feature 0 and zero-pads the remaining features.
+		- For the photonic QRNN, this must be at most `2*kd`.
+		- When fewer features are produced (e.g., a 1D signal), the photonic model pads the remaining features with zeros.
 - `dataset.sequence_length` (int): number of time steps fed to the model.
 - `dataset.prediction_horizon` (int): how far ahead to predict (currently used as a shift in the target).
 - `dataset.max_rows` (int|null): optional cap on the number of rows used (applied before splitting).
@@ -213,7 +270,7 @@ Classical RNN model fields (`model.name="rnn_baseline"`, `model.params.*`)
 
 Photonic QRNN model fields (`model.name="photonic_qrnn"`, `model.params.*`)
 
-- `kd` (int): number of logical "data" photons (D register). Input feature dimension must be `2*kd`.
+- `kd` (int): number of logical "data" photons (D register). Input feature dimension must be `<= 2*kd` (padded with zeros if smaller).
 - `kh` (int): number of logical "hidden" photons (H register). This is the recurrent memory.
 - `depth` (int): number of QRB applications *within a single time step*.
 	- Note: this is a prototype/generalization knob and is not a named hyperparameter of the original paper. To stay closest to the paper, set `depth=1`.

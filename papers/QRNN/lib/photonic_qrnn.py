@@ -84,9 +84,16 @@ class PhotonicQRNNCell(nn.Module):
         kd = int(config.kd)
         kh = int(config.kh)
         m = kd + kh
-        if input_size != 2 * kd:
+        self._required_input_size = 2 * kd
+        if input_size > self._required_input_size:
             raise ValueError(
-                f"Photonic QRNN expects input_size=2*kd={2*kd}, got {input_size}"
+                f"Photonic QRNN expects input_size<=2*kd={self._required_input_size}, got {input_size}"
+            )
+        if input_size < self._required_input_size:
+            logger.warning(
+                "Photonic QRNN received input_size=%d but requires 2*kd=%d; will pad inputs with zeros.",
+                input_size,
+                self._required_input_size,
             )
 
         # Build QRB circuit and Merlin layer.
@@ -157,6 +164,25 @@ class PhotonicQRNNCell(nn.Module):
             "This prototype expects scalar branch probabilities (batch_size==1)"
         )
 
+    def _pad_features_to_required(self, x_batch: torch.Tensor) -> torch.Tensor:
+        """Pad feature dimension with zeros up to 2*kd.
+
+        Merlin's QRB encoding expects exactly 2*kd input angles (one per D-mode phase
+        shifter). When the dataset provides fewer features, we pad with zeros.
+        """
+
+        required = int(self._required_input_size)
+        feat = int(x_batch.shape[-1])
+        if feat == required:
+            return x_batch
+        if feat > required:
+            raise ValueError(
+                f"Photonic QRNN expects at most {required} features (2*kd), got {feat}"
+            )
+
+        pad = x_batch.new_zeros((x_batch.shape[0], required - feat))
+        return torch.cat([x_batch, pad], dim=-1)
+
     def _expand_all_branches(
         self,
         pm: PartialMeasurement,
@@ -216,6 +242,8 @@ class PhotonicQRNNCell(nn.Module):
             raise ValueError(
                 "Prototype photonic QRNN currently supports batch_size==1 only"
             )
+
+        x_batch = self._pad_features_to_required(x_batch)
 
         kh = int(self.config.kh)
         depth = int(self.config.depth)
@@ -289,13 +317,16 @@ class PhotonicQRNNRegressor(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.ndim != 3:
             raise ValueError(
-                f"Expected x shape (batch, seq_len, 2*kd), got {tuple(x.shape)}"
+                f"Expected x shape (batch, seq_len, feat), got {tuple(x.shape)}"
             )
         batch, seq_len, feat = x.shape
-        if feat != 2 * int(self.cell.config.kd):
-            raise ValueError(
-                f"Expected feature dim {2 * int(self.cell.config.kd)}, got {feat}"
-            )
+
+        required = int(self.cell._required_input_size)
+        if feat > required:
+            raise ValueError(f"Expected feature dim <= {required} (2*kd), got {feat}")
+        if feat < required:
+            pad = x.new_zeros((batch, seq_len, required - feat))
+            x = torch.cat([x, pad], dim=-1)
 
         # Note: we currently evaluate each sample sequentially (no vectorized batching)
         # because partial measurement returns structured branch objects.
