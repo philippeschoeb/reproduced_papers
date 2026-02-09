@@ -327,8 +327,7 @@ Limitations / gotchas
 
 ## Results and Next Steps
 
-- Baseline metrics: mean squared error on validation splits of the weather sequences (see `metrics.json`).
-- Planned extensions: implement the QRNN cell described in the paper, run ablations versus the classical RNN, and add visualization notebooks for sequence reconstruction.
+- Planned extensions: compare different models, optimize hyper-parameters and run ablations versus the classical RNN.
 
 ## Testing
 
