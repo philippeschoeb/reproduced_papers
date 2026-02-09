@@ -1,6 +1,6 @@
 # QRNN — Quantum Recurrent Neural Networks (Neural Networks, 2023)
 
-This project bootstraps a reproduction of the paper on quantum recurrent neural networks (QRNN, Neural Networks, 2023). It includes both a classical RNN baseline and an experimental photonic QRNN prototype implemented with MerLin/Perceval.
+This project bootstraps a reproduction of the paper on quantum recurrent neural networks (QRNN, Neural Networks, 2023). It includes both a classical RNN baseline, the paper described Gate-Base "plain QRNN" implemented with Pennylane, and an experimental photonic QRNN prototype implemented with MerLin/Perceval.
 
 ## Reference and Attribution
 
@@ -12,13 +12,12 @@ This project bootstraps a reproduction of the paper on quantum recurrent neural 
 
 ## Overview
 
-This implementation (see [QRNN.md]) provides two model families for comparison:
+This implementation (see [QRNN.md]) provides three model families for comparison:
 
 - a **classical RNN baseline** for sequence forecasting on meteorological time-series data
 - a **gate-based pQRNN implementation** (PennyLane) following the paper's QRB/pQRNN description
 - an **experimental photonic QRNN prototype** using partial measurement to propagate a hidden photonic register
 
-Note: the paper also discusses a gate-based QRNN variant. This repository implements the pQRNN (plain QRNN) form in PennyLane under `model.name="gate_pqrnn"`.
 
 Datasets and evaluation focus:
 
@@ -36,8 +35,7 @@ Figure: photonic circuit used by the QRB block (example shown for a 2-level QRB)
 
 The implementation follows the design decisions we settled on for the QRB/QRNN block:
 
-- **Encoding:** the input at time step `t` (denoted `x_t`) is assumed to have dimension `2*kd` and is mapped **directly** to `2*kd` phase shifters on the D register (dual-rail modes). Concretely, `x_t[i]` sets the phase of parameter `in_i`.
-	- Optionally, you can enable `model.params.input_encoding="arccos"` to apply $\theta=\arccos(x)$ before setting phase shifters. If you do, prefer `dataset.feature_normalization="minmax_-1_1"` to keep inputs in $[-1,1]`.
+- **Encoding:** the input at time step `t` (denoted `x_t`) is assumed to have dimension `2*kd` and is mapped **directly** to `2*kd` phase shifters on the D register (dual-rail modes). Concretely, `x_t[i]` sets the phase of parameter `in_i` through encoding conversion (available `arccos` and `identity` options).
 - **Partial measurement:** after the QRB circuit, we apply **partial measurement** on the D register (the first `2*kd` modes). The post-selected computation space is controlled by `measurement_space` (dual-rail by default).
 - **Readout:** we keep the full measurement outcome space for the chosen post-selection. Let `p_t` be the probability vector over these outcomes. The model predicts
 	`y_t = Linear(p_t)`, i.e. a trainable `torch.nn.Linear(len(p_t), 1)`.
