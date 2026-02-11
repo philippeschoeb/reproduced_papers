@@ -95,9 +95,7 @@ def run_accuracy_vs_kernel(exp_cfg: dict[str, Any], output_dir: Path) -> dict[st
 
     if not show_plots:
         matplotlib.use("Agg")
-    import jax.numpy as jnp
     import matplotlib.pyplot as plt
-    import neural_tangents as nt
     from merlin.algorithms import FeatureMap, FidelityKernel
     from perceval import GenericInterferometer
     from sklearn.model_selection import GridSearchCV
@@ -128,18 +126,29 @@ def run_accuracy_vs_kernel(exp_cfg: dict[str, Any], output_dir: Path) -> dict[st
     )
 
     quantum_kernel._slos_graph = NoisySLOSComputeGraph(
-        input_state, indistinguishability=indistinguishability
+        indistinguishability=indistinguishability
     )
-    coherent_kernel._slos_graph = NoisySLOSComputeGraph(
-        input_state, indistinguishability=0.0
-    )
+    coherent_kernel._slos_graph = NoisySLOSComputeGraph(indistinguishability=0.0)
 
-    _, _, neural_tangent_kernel = nt.stax.serial(
-        nt.stax.Dense(30, W_std=1.5, b_std=0.05),
-        nt.stax.Erf(),
-        nt.stax.Dense(30, W_std=1.5, b_std=0.05),
-        nt.stax.Erf(),
-    )
+    nt_available = True
+    try:
+        import jax.numpy as jnp
+        import neural_tangents as nt
+    except ImportError as exc:
+        nt_available = False
+        jnp = None  # type: ignore[assignment]
+        nt = None  # type: ignore[assignment]
+        LOGGER.warning(
+            "Skipping Neural Tangent baseline due to import error: %s", exc
+        )
+
+    if nt_available:
+        _, _, neural_tangent_kernel = nt.stax.serial(
+            nt.stax.Dense(30, W_std=1.5, b_std=0.05),
+            nt.stax.Erf(),
+            nt.stax.Dense(30, W_std=1.5, b_std=0.05),
+            nt.stax.Erf(),
+        )
 
     X, y, _, _, _ = generate_data(
         superset_size,
@@ -236,50 +245,53 @@ def run_accuracy_vs_kernel(exp_cfg: dict[str, Any], output_dir: Path) -> dict[st
             score_l = svc_l.score(X_test, y_test)
             score_p = svc_p.score(X_test, y_test)
 
-            X_train_jnp = jnp.array(X_train)
-            X_test_jnp = jnp.array(X_test)
-            y_train_jnp = jnp.array(y_train).reshape(-1, 1)
+            if nt_available:
+                X_train_jnp = jnp.array(X_train)
+                X_test_jnp = jnp.array(X_test)
+                y_train_jnp = jnp.array(y_train).reshape(-1, 1)
 
-            predict_fn = nt.predict.gradient_descent_mse_ensemble(
-                neural_tangent_kernel, X_train_jnp, y_train_jnp, diag_reg=1e-4
-            )
-            y_pred, _ = predict_fn(x_test=X_test_jnp, get="ntk", compute_cov=True)
-            score_nt = np.mean(np.sign(y_pred.flatten()) == y_test)
+                predict_fn = nt.predict.gradient_descent_mse_ensemble(
+                    neural_tangent_kernel, X_train_jnp, y_train_jnp, diag_reg=1e-4
+                )
+                y_pred, _ = predict_fn(x_test=X_test_jnp, get="ntk", compute_cov=True)
+                score_nt = np.mean(np.sign(y_pred.flatten()) == y_test)
 
             scores_q_rep.append(score_q)
             scores_c_rep.append(score_c)
             scores_g_rep.append(score_g)
             scores_l_rep.append(score_l)
             scores_p_rep.append(score_p)
-            scores_nt_rep.append(score_nt)
+            if nt_available:
+                scores_nt_rep.append(score_nt)
 
         scores_q.append(scores_q_rep)
         scores_c.append(scores_c_rep)
         scores_g.append(scores_g_rep)
         scores_l.append(scores_l_rep)
         scores_p.append(scores_p_rep)
-        scores_nt.append(scores_nt_rep)
+        if nt_available:
+            scores_nt.append(scores_nt_rep)
 
     scores_q = np.array(scores_q)
     scores_c = np.array(scores_c)
     scores_g = np.array(scores_g)
     scores_l = np.array(scores_l)
     scores_p = np.array(scores_p)
-    scores_nt = np.array(scores_nt)
+    scores_nt = np.array(scores_nt) if nt_available else np.array([])
 
     mean_scores_q = np.mean(scores_q, axis=1)
     mean_scores_c = np.mean(scores_c, axis=1)
     mean_scores_g = np.mean(scores_g, axis=1)
     mean_scores_l = np.mean(scores_l, axis=1)
     mean_scores_p = np.mean(scores_p, axis=1)
-    mean_scores_nt = np.mean(scores_nt, axis=1)
+    mean_scores_nt = np.mean(scores_nt, axis=1) if nt_available else None
 
     std_scores_q = np.std(scores_q, axis=1) / 2
     std_scores_c = np.std(scores_c, axis=1) / 2
     std_scores_g = np.std(scores_g, axis=1) / 2
     std_scores_l = np.std(scores_l, axis=1) / 2
     std_scores_p = np.std(scores_p, axis=1) / 2
-    std_scores_nt = np.std(scores_nt, axis=1) / 2
+    std_scores_nt = np.std(scores_nt, axis=1) / 2 if nt_available else None
 
     hyperparameters = {
         "input_state": input_state,
@@ -298,15 +310,16 @@ def run_accuracy_vs_kernel(exp_cfg: dict[str, Any], output_dir: Path) -> dict[st
         json.dump(hyperparameters, handle, indent=4)
 
     data_path = output_dir / "data.npz"
-    np.savez(
-        data_path,
-        scores_q=scores_q,
-        scores_c=scores_c,
-        scores_g=scores_g,
-        scores_l=scores_l,
-        scores_p=scores_p,
-        scores_nt=scores_nt,
-    )
+    save_payload = {
+        "scores_q": scores_q,
+        "scores_c": scores_c,
+        "scores_g": scores_g,
+        "scores_l": scores_l,
+        "scores_p": scores_p,
+    }
+    if nt_available:
+        save_payload["scores_nt"] = scores_nt
+    np.savez(data_path, **save_payload)
 
     plt.rcParams["legend.fontsize"] = 12
     plt.rcParams["xtick.labelsize"] = 12
@@ -372,17 +385,18 @@ def run_accuracy_vs_kernel(exp_cfg: dict[str, Any], output_dir: Path) -> dict[st
         markersize=5,
         linestyle="--",
     )
-    plt.errorbar(
-        data_sizes,
-        mean_scores_nt,
-        yerr=std_scores_nt,
-        label="Neural Tangent",
-        linewidth=1.5,
-        marker="o",
-        capsize=5,
-        markersize=5,
-        linestyle="--",
-    )
+    if nt_available:
+        plt.errorbar(
+            data_sizes,
+            mean_scores_nt,
+            yerr=std_scores_nt,
+            label="Neural Tangent",
+            linewidth=1.5,
+            marker="o",
+            capsize=5,
+            markersize=5,
+            linestyle="--",
+        )
 
     plt.xlabel("Data size")
     plt.ylabel("Accuracy")

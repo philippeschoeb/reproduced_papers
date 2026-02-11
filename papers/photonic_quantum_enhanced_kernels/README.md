@@ -175,19 +175,19 @@ reproductions on the right.
 
 ### Figures 4a and 4b
 
-<img src="figures/fig-4a.png" width="42%"> <img src="figures/results-for-readmeaccuracy_vs_input_state/plot.png" width="55%">
+<img src="figures/fig-4a.png" width="42%"> <img src="figures/results-for-readme/accuracy_vs_input_state/plot.png" width="55%">
 
 ### Figure 4c
 
-<img src="figures/fig-4b.png" width="44%"> <img src="figures/results-for-readmeaccuracy_vs_kernel/plot.png" width="54%">
+<img src="figures/fig-4b.png" width="44%"> <img src="figures/results-for-readme/accuracy_vs_kernel/plot.png" width="54%">
 
 ### Supplementary Figure 1
 g
-<img src="figures/supplementary-fig-1.png" width="48%"> <img src="figures/results-for-readmeaccuracy_vs_geometric_difference/n=2/plot.png" width="43%">
+<img src="figures/supplementary-fig-1.png" width="48%"> <img src="figures/results-for-readme/accuracy_vs_geometric_difference/n=2/plot.png" width="43%">
 
 ### Supplementary Figure 2
 
-<img src="figures/supplementary-fig-2.png" width="48%"> <img src="figures/results-for-readmeaccuracy_vs_width/plot.png" width="48%">
+<img src="figures/supplementary-fig-2.png" width="48%"> <img src="figures/results-for-readme/accuracy_vs_width/plot.png" width="48%">
 
 ## Testing
 

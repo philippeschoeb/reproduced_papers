@@ -140,10 +140,10 @@ def run_accuracy_vs_input_state(
             )
 
             quantum_kernel._slos_graph = NoisySLOSComputeGraph(
-                input_state, indistinguishability=indistinguishability
+                indistinguishability=indistinguishability
             )
             coherent_kernel._slos_graph = NoisySLOSComputeGraph(
-                input_state, indistinguishability=0.0
+                indistinguishability=0.0
             )
 
             np.random.shuffle(all_indices)

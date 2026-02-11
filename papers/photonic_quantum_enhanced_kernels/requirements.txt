@@ -1,8 +1,8 @@
 merlinquantum==0.2.3
-jax==0.4.34
-numpy==2.3.2
+jax
+jaxlib
+neural-tangents
 matplotlib==3.10.5
-perceval-quandela==1.1.0
-scikit-learn==1.7.2
 tqdm==4.67.1
 scipy==1.16.1
+pytest
