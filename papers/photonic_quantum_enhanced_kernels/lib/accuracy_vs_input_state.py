@@ -103,9 +103,9 @@ def run_accuracy_vs_input_state(
     from sklearn.svm import SVC
     from tqdm import tqdm
 
-    from src.feature_map import circuit_func
-    from src.generate_data import generate_data
-    from src.noise import NoisySLOSComputeGraph
+    from utils.feature_map import circuit_func
+    from utils.generate_data import generate_data
+    from utils.noise import NoisySLOSComputeGraph
 
     circuit = GenericInterferometer(m=len(input_states[0]), fun_gen=circuit_func)
     input_size = len(circuit.get_parameters())

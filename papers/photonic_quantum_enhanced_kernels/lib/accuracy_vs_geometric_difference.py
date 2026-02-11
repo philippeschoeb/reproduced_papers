@@ -80,7 +80,7 @@ def run_accuracy_vs_geometric_difference(
     from sklearn.svm import SVC
     from tqdm import tqdm
 
-    from src.generate_data import generate_data
+    from utils.generate_data import generate_data
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

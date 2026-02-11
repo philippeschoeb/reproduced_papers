@@ -3,7 +3,7 @@ import random
 import numpy as np
 import pytest
 import torch
-from src.noise import NoisySLOSComputeGraph
+from utils.noise import NoisySLOSComputeGraph
 from perceval import BasicState, Circuit, Matrix, NoiseModel, Processor, Unitary
 
 

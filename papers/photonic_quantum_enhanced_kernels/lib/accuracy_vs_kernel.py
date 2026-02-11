@@ -103,9 +103,9 @@ def run_accuracy_vs_kernel(exp_cfg: dict[str, Any], output_dir: Path) -> dict[st
     from sklearn.model_selection import GridSearchCV
     from sklearn.svm import SVC
 
-    from src.feature_map import circuit_func
-    from src.generate_data import generate_data
-    from src.noise import NoisySLOSComputeGraph
+    from utils.feature_map import circuit_func
+    from utils.generate_data import generate_data
+    from utils.noise import NoisySLOSComputeGraph
 
     circuit = GenericInterferometer(m=len(input_state), fun_gen=circuit_func)
     input_size = len(circuit.get_parameters())

@@ -158,7 +158,7 @@ photonic_quantum_enhanced_kernels/
 │
 ├── results/
 │
-├── src/ # Source files
+├── utils / # Utility source files
 │   ├── feature_map.py   # Util for constructing quantum kernel feature maps.
 │   ├── generate_data.py # Generating ad-hoc dataset.
 │   └── noise.py         # Partial distinguishability simulation.
@@ -175,23 +175,23 @@ reproductions on the right.
 
 ### Figures 4a and 4b
 
-<img src="figures/fig-4a.png" width="42%"> <img src="results/accuracy_vs_input_state/plot.png" width="55%">
+<img src="figures/fig-4a.png" width="42%"> <img src="figures/results-for-readmeaccuracy_vs_input_state/plot.png" width="55%">
 
 ### Figure 4c
 
-<img src="figures/fig-4b.png" width="44%"> <img src="results/accuracy_vs_kernel/plot.png" width="54%">
+<img src="figures/fig-4b.png" width="44%"> <img src="figures/results-for-readmeaccuracy_vs_kernel/plot.png" width="54%">
 
 ### Supplementary Figure 1
-
-<img src="figures/supplementary-fig-1.png" width="48%"> <img src="results/accuracy_vs_geometric_difference/n=2/plot.png" width="43%">
+g
+<img src="figures/supplementary-fig-1.png" width="48%"> <img src="figures/results-for-readmeaccuracy_vs_geometric_difference/n=2/plot.png" width="43%">
 
 ### Supplementary Figure 2
 
-<img src="figures/supplementary-fig-2.png" width="48%"> <img src="results/accuracy_vs_width/plot.png" width="48%">
+<img src="figures/supplementary-fig-2.png" width="48%"> <img src="figures/results-for-readmeaccuracy_vs_width/plot.png" width="48%">
 
 ## Testing
 
-This directory contains tests for ensuring that the noise computation in `src/noise.py` is performed correctly by cross-referencing the probabilities with Perceval.
+This directory contains tests for ensuring that the noise computation in `utils/noise.py` is performed correctly by cross-referencing the probabilities with Perceval.
 To run tests:
 
 ```bash

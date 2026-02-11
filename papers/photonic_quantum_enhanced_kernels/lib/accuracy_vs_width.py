@@ -93,8 +93,8 @@ def run_accuracy_vs_width(exp_cfg: dict[str, Any], output_dir: Path) -> dict[str
     from sklearn.svm import SVC
     from tqdm import tqdm
 
-    from src.feature_map import circuit_func
-    from src.generate_data import generate_data
+    from utils.feature_map import circuit_func
+    from utils.generate_data import generate_data
 
     scores_q_width = []
     scores_c_width = []
