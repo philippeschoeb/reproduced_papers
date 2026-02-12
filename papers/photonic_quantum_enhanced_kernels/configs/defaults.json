@@ -8,7 +8,7 @@
   "dry_run": false,
   "plotting": {
     "use_tex": false,
-    "show": true
+    "show": false
   },
   "experiments": {
     "accuracy_vs_input_state": {
