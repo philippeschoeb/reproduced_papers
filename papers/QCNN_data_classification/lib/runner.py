@@ -9,7 +9,6 @@ from typing import Any, Callable
 
 import numpy as np
 import torch.nn as nn
-
 from lib.data import make_pca
 from utils.circuit import required_input_params
 from utils.training import train_once
