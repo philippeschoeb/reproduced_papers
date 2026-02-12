@@ -242,7 +242,7 @@ def init_tensor(shape, bond_str, init_method):
         eye_tensor = eye_tensor.expand(expand_shape)
 
         tensor = torch.zeros(shape)
-        tensor[[slice(dim) for dim in expand_shape]] = eye_tensor
+        tensor[tuple(slice(dim) for dim in expand_shape)] = eye_tensor
 
         # Add on a bit of random noise
         tensor += std * torch.randn(shape)
