@@ -172,14 +172,27 @@ class BosonSampler:
         width = len(str(self.nb_parameters - 1))
         parameters = [f"phi{i:0{width}d}" for i in range(self.num_effective_params)]
 
-        return ML.QuantumLayer(
+        quantum_layer_kwargs = dict(
             input_size=0,
             n_photons=self.n,
             circuit=circuit,
             input_state=input_state,
             trainable_parameters=parameters,
-            computation_space=ML.ComputationSpace.UNBUNCHED,
         )
+
+        # Merlin >=0.3 deprecates passing computation_space directly.
+        if hasattr(ML, "MeasurementStrategy") and hasattr(
+            ML.MeasurementStrategy, "probs"
+        ):
+            quantum_layer_kwargs["measurement_strategy"] = (
+                ML.MeasurementStrategy.probs(
+                    computation_space=ML.ComputationSpace.UNBUNCHED
+                )
+            )
+        else:
+            quantum_layer_kwargs["computation_space"] = ML.ComputationSpace.UNBUNCHED
+
+        return ML.QuantumLayer(**quantum_layer_kwargs)
 
     def set_params(self, params: torch.Tensor) -> None:
         """
