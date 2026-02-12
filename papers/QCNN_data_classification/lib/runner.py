@@ -2,18 +2,15 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 import statistics
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Callable
-
 import numpy as np
 import torch.nn as nn
-
 from lib.data import make_pca
 from utils.circuit import required_input_params
 from utils.training import train_once
-
 from .models import QConvModel, SingleGI, build_quantum_kernels
 
 
