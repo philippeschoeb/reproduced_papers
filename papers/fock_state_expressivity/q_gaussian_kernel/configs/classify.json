@@ -1,0 +1,28 @@
+{
+  "description": "Preset config for Gaussian kernel classification task (uses saved manifest).",
+  "experiment": {
+    "task": "classify"
+  },
+  "outdir": "results",
+  "seed": 1337,
+  "device": "cpu",
+  "classification": {
+    "data": {
+      "num_samples": 200,
+      "test_size": 0.4,
+      "scaling_factor": 0.65,
+      "cache_dir": "data/cache/classification",
+      "datasets": {
+        "circular": {
+          "noise": 0.05
+        },
+        "moon": {
+          "noise": 0.2
+        },
+        "blob": {
+          "cluster_std": 4.0
+        }
+      }
+    }
+  }
+}

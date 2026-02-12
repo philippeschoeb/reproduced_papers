@@ -1,0 +1,5 @@
+matplotlib
+merlinquantum==0.2.3
+pytest==8.4.2
+seaborn==0.13.2
+tqdm

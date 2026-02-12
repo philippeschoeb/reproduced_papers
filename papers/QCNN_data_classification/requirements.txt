@@ -1,0 +1,12 @@
+# Photonic / quantum stack
+merlinquantum
+
+# Core scientific stack
+scipy
+scikit-learn
+torchvision
+
+# Utilities
+matplotlib
+pandas
+pytest

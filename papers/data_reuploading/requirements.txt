@@ -1,0 +1,8 @@
+imageio
+matplotlib
+pandas
+pytest
+seaborn
+merlinquantum
+notebook
+kaggle

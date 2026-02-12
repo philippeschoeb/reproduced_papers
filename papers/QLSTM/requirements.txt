@@ -1,0 +1,8 @@
+torch
+numpy
+pennylane
+scipy
+scikit-learn
+matplotlib
+merlinquantum
+pytest

@@ -1,0 +1,10 @@
+aiohttp
+h5py
+matplotlib
+merlinquantum
+pennylane
+pytest
+qoptcraft
+scikit-learn
+seaborn
+tqdm

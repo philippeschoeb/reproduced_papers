@@ -1,0 +1,4 @@
+matplotlib
+merlinquantum
+pytest
+tqdm

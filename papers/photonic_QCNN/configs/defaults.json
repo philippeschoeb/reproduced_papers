@@ -1,0 +1,34 @@
+{
+  "description": "Default configuration for MerLin Photonic QCNN short training on MNIST (0 vs 1).",
+  "implementation": "merlin",
+  "datasets": ["MNIST"],
+  "seed": 42,
+  "device": "cpu",
+  "outdir": "results",
+  "max_iter": null,
+  "logging": {
+    "level": "info"
+  },
+  "training": {
+    "lr": 0.1,
+    "weight_decay": 0.001,
+    "gamma": 0.9,
+    "epochs": 1
+  },
+  "runs": {
+    "MNIST": {
+      "n_runs": 1,
+      "data_source": "paper",
+      "conv_circuit": "BS",
+      "dense_circuit": "BS",
+      "measure_subset": 2,
+      "dense_added_modes": 0,
+      "output_proba_type": "mode",
+      "output_formatting": "Mod_grouping",
+      "random_states": [42],
+      "batch_size": 6,
+      "max_samples": 1000,
+      "results_subdir": "MNIST"
+    }
+  }
+}
