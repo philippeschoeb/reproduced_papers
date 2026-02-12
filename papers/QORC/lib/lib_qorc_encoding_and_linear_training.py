@@ -139,12 +139,15 @@ def create_quantum_layer_for_ascella(n_photons, logger):
 
     device_name = "cpu"
     qorc_quantum_layer = ML.QuantumLayer(
-        input_size=n_modes - 1,  # Nb input features = 11 pour ascella (le premier mode n'a pas de PS)
+        input_size=n_modes
+        - 1,  # Nb input features = 11 pour ascella (le premier mode n'a pas de PS)
         circuit=qorc_circuit,  # QORC quantum circuit
         trainable_parameters=[],  # Circuit is not trainable
         input_parameters=input_param_names,  # Input encoding parameters
         input_state=qorc_input_state,  # Initial photon state
-        measurement_strategy = ML.MeasurementStrategy.probs(computation_space = ML.ComputationSpace.FOCK),  # Output: Get all Fock states probas
+        measurement_strategy=ML.MeasurementStrategy.probs(
+            computation_space=ML.ComputationSpace.FOCK
+        ),  # Output: Get all Fock states probas
         device=torch.device(device_name),
     )
 
@@ -200,7 +203,11 @@ def create_qorc_quantum_layer(
         qorc_output_size = math.comb(n_modes, n_photons)
     else:
         qorc_output_size = math.comb(n_photons + n_modes - 1, n_photons)
-    strategy = ML.MeasurementStrategy.probs() if b_no_bunching else ML.MeasurementStrategy.probs(computation_space = ML.ComputationSpace.FOCK)
+    strategy = (
+        ML.MeasurementStrategy.probs()
+        if b_no_bunching
+        else ML.MeasurementStrategy.probs(computation_space=ML.ComputationSpace.FOCK)
+    )
     logger.info("MerLin QuantumLayer creation:")
     qorc_quantum_layer = ML.QuantumLayer(
         input_size=n_modes,  # Nb input features = nb modes
@@ -208,7 +215,7 @@ def create_qorc_quantum_layer(
         trainable_parameters=[],  # Circuit is not trainable
         input_parameters=params_prefix,  # Input encoding parameters
         input_state=qorc_input_state,  # Initial photon state
-        measurement_strategy = strategy,
+        measurement_strategy=strategy,
         device=torch.device(device_name),
     )
     qorc_quantum_layer.eval()  # Put the layer in eval (do not compute gradiants)
