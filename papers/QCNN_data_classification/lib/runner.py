@@ -13,6 +13,7 @@ import torch.nn as nn
 from lib.data import make_pca
 from utils.circuit import required_input_params
 from utils.training import train_once
+import matplotlib
 import matplotlib.pyplot as plt
 
 from .models import QConvModel, SingleGI, build_quantum_kernels
@@ -124,7 +125,7 @@ def _prepare_models(
 def _plot_training_figures(
     run_dir: Path, variant_histories: dict[str, list[dict[str, list[float]]]]
 ) -> None:
-    
+
     matplotlib.use("Agg")
 
     def _save_metric(metric_key: str, ylabel: str, title: str, filename: Path) -> None:
