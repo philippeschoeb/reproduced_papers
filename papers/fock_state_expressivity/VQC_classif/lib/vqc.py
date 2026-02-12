@@ -13,7 +13,7 @@ import numpy as np
 import perceval as pcvl
 import torch
 import torch.nn as nn
-from merlin import QuantumLayer
+from merlin import ComputationSpace, MeasurementStrategy, QuantumLayer
 
 
 def create_vqc_spiral(m, input_size, frequency=1):
@@ -262,6 +262,9 @@ def get_vqc(
         output_size = comb(m + n_photons - 1, n_photons)
 
     print(f"Output size of quantum layer: {output_size}")
+    computation_space = (
+        ComputationSpace.UNBUNCHED if no_bunching else ComputationSpace.FOCK
+    )
 
     vqc = QuantumLayer(
         input_size=input_size,
@@ -271,7 +274,9 @@ def get_vqc(
         ],
         input_parameters=["px"],
         input_state=initial_state,  # [1, 0] * 3 for example
-        no_bunching=no_bunching,
+        measurement_strategy=MeasurementStrategy.probs(
+            computation_space=computation_space
+        ),
     )
 
     # The Linear layer acts as the observable and it makes sure the output is 1 dimensional

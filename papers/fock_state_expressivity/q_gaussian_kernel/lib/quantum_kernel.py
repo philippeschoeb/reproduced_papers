@@ -6,7 +6,7 @@ import numpy as np
 import perceval as pcvl
 import torch
 import torch.nn as nn
-from merlin import MeasurementStrategy, QuantumLayer
+from merlin import ComputationSpace, MeasurementStrategy, QuantumLayer
 
 
 def _ps_random():
@@ -208,6 +208,10 @@ def build_quantum_kernel(num_photons: int, cfg: dict) -> nn.Module:
     scale_layer = ScaleLayer(1, cfg.get("scale_type", "learned"))
     circuit = build_circuit(cfg)
     train_params: list[str] = ["theta"] if cfg.get("train_circuit", False) else []
+    no_bunching = bool(cfg.get("no_bunching", False))
+    computation_space = (
+        ComputationSpace.UNBUNCHED if no_bunching else ComputationSpace.FOCK
+    )
 
     quantum_layer = QuantumLayer(
         input_size=1,
@@ -215,8 +219,9 @@ def build_quantum_kernel(num_photons: int, cfg: dict) -> nn.Module:
         trainable_parameters=train_params,
         input_parameters=["δ"],
         input_state=input_state,
-        no_bunching=cfg.get("no_bunching", False),
-        measurement_strategy=MeasurementStrategy.PROBABILITIES,
+        measurement_strategy=MeasurementStrategy.probs(
+            computation_space=computation_space
+        ),
     )
 
     linear = nn.Linear(quantum_layer.output_size, 1)
