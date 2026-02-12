@@ -67,9 +67,7 @@ def generate_data(
     # Force quantum kernel's SLOS graph to have 0 indistinguishability.
     original_slos_graph = quantum_kernel._slos_graph
 
-    quantum_kernel._slos_graph = NoisySLOSComputeGraph(
-        input_state, indistinguishability=1e-5
-    )
+    quantum_kernel._slos_graph = NoisySLOSComputeGraph(indistinguishability=1e-5)
 
     # Generate X, y values
     input_size = quantum_kernel.input_size
@@ -97,4 +95,3 @@ def generate_data(
 
     # Data generation
     return X, y, geometric_diff, K1, K2
-
