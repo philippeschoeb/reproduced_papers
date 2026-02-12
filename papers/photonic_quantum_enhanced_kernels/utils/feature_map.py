@@ -1,4 +1,5 @@
-from perceval import Circuit, BS, PS, P
+from perceval import BS, PS, Circuit, P
+
 
 def circuit_func(x):
     """Function for generating rectangular genericInterferometer

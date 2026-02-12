@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pandas as pd
 import torch
-
 from common import load_runtime_ready_config
 from lib.data import build_dataloaders
 from lib.model import RNNRegressor
@@ -71,9 +70,9 @@ def test_build_dataloaders_parses_alias_columns(tmp_path):
     batch_sequences, batch_targets = next(iter(train_loader))
     assert batch_sequences.shape[-1] == 2
     assert batch_targets.ndim == 1
-    assert len(val_loader.dataset) + len(test_loader.dataset) + len(train_loader.dataset) == sum(
-        metadata["splits"].values()
-    )
+    assert len(val_loader.dataset) + len(test_loader.dataset) + len(
+        train_loader.dataset
+    ) == sum(metadata["splits"].values())
 
 
 def _has_merlin() -> bool:
@@ -265,8 +264,8 @@ def test_feature_normalization_minmax_signed_keeps_range():
 
 def _has_perceval_and_matplotlib() -> bool:
     try:
-        import perceval as _  # noqa: F401
-        import matplotlib as _  # noqa: F401
+        import matplotlib  # noqa: F401
+        import perceval  # noqa: F401
 
         return True
     except Exception:

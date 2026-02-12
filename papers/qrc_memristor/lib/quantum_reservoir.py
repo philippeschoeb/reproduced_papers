@@ -1,11 +1,10 @@
 import merlin as ml
+import numpy as np
 import perceval as pcvl
 import perceval.components as comp
 import torch
-import numpy as np
-from typing import Optional, Union, List, Tuple
 from lib.feedback import FeedbackLayer, FeedbackLayerNARMA
-from lib.training import encode_phase, R_to_theta
+from lib.training import R_to_theta, encode_phase
 
 
 class QuantumReservoirFeedback(torch.nn.Module):
@@ -38,7 +37,7 @@ class QuantumReservoirFeedback(torch.nn.Module):
             input_parameters=["px"],
             input_state=[0, 1, 0],
             measurement_strategy=ml.MeasurementStrategy.PROBABILITIES,
-            no_bunching=True
+            no_bunching=True,
         )
 
         self.feedback = FeedbackLayer(memory_size=memory)
@@ -59,24 +58,30 @@ class QuantumReservoirFeedback(torch.nn.Module):
         """
         # Encoding with input data (px_0)
         phi_enc = pcvl.P(f"px_{0}")
-        u_enc_u_1 = (pcvl.Circuit(2, name="U_enc, U_1")
-                     .add((0, 1), comp.BS())
-                     .add(1, comp.PS(phi=phi_enc))
-                     .add((0, 1), comp.BS())
-                     .add(1, comp.PS(phi=pcvl.P(f"theta_{1}"))))
+        u_enc_u_1 = (
+            pcvl.Circuit(2, name="U_enc, U_1")
+            .add((0, 1), comp.BS())
+            .add(1, comp.PS(phi=phi_enc))
+            .add((0, 1), comp.BS())
+            .add(1, comp.PS(phi=pcvl.P(f"theta_{1}")))
+        )
 
         # Memory/feedback circuit with feedback input (px_1)
-        u_mem = (pcvl.Circuit(2, name="U_mem")
-                 .add((0, 1), comp.BS())
-                 .add(0, comp.PS(phi=pcvl.P(f"px_{1}")))  # FEEDBACK INPUT
-                 .add((0, 1), comp.BS()))
+        u_mem = (
+            pcvl.Circuit(2, name="U_mem")
+            .add((0, 1), comp.BS())
+            .add(0, comp.PS(phi=pcvl.P(f"px_{1}")))  # FEEDBACK INPUT
+            .add((0, 1), comp.BS())
+        )
 
         # Measurement circuit
-        u_2 = (pcvl.Circuit(2, name="U_2")
-               .add(1, comp.PS(phi=pcvl.P(f"theta_{2}")))
-               .add((0, 1), comp.BS())
-               .add(1, comp.PS(phi=pcvl.P(f"theta_{3}")))
-               .add((0, 1), comp.BS()))
+        u_2 = (
+            pcvl.Circuit(2, name="U_2")
+            .add(1, comp.PS(phi=pcvl.P(f"theta_{2}")))
+            .add((0, 1), comp.BS())
+            .add(1, comp.PS(phi=pcvl.P(f"theta_{3}")))
+            .add((0, 1), comp.BS())
+        )
 
         quantum_circ = pcvl.Circuit(n_modes)
         quantum_circ.add(0, u_enc_u_1)
@@ -154,7 +159,7 @@ class QuantumReservoirFeedbackTimeSeries(torch.nn.Module):
             input_parameters=["px_0", "px_1"],
             input_state=[0, 1, 0],
             measurement_strategy=ml.MeasurementStrategy.PROBABILITIES,
-            no_bunching=True
+            no_bunching=True,
         )
 
         self.feedback = FeedbackLayerNARMA(memory_size=memory)
@@ -171,16 +176,20 @@ class QuantumReservoirFeedbackTimeSeries(torch.nn.Module):
         """
         # Encoding with input data (px_0)
         phi_enc = pcvl.P(f"px_{0}")
-        u_enc = (pcvl.Circuit(2, name="U_enc")
-                 .add((0, 1), comp.BS())
-                 .add(1, comp.PS(phi=phi_enc))
-                 .add((0, 1), comp.BS()))
+        u_enc = (
+            pcvl.Circuit(2, name="U_enc")
+            .add((0, 1), comp.BS())
+            .add(1, comp.PS(phi=phi_enc))
+            .add((0, 1), comp.BS())
+        )
 
         # Memory/feedback circuit with feedback input (px_1)
-        u_mem = (pcvl.Circuit(2, name="U_mem")
-                 .add((0, 1), comp.BS())
-                 .add(0, comp.PS(phi=pcvl.P(f"px_{1}")))
-                 .add((0, 1), comp.BS()))
+        u_mem = (
+            pcvl.Circuit(2, name="U_mem")
+            .add((0, 1), comp.BS())
+            .add(0, comp.PS(phi=pcvl.P(f"px_{1}")))
+            .add((0, 1), comp.BS())
+        )
 
         quantum_circ = pcvl.Circuit(n_modes)
         quantum_circ.add(0, u_enc)
@@ -271,7 +280,7 @@ class QuantumReservoirNoMem(torch.nn.Module):
             input_parameters=["px"],
             input_state=[0, 1, 0],
             measurement_strategy=ml.MeasurementStrategy.PROBABILITIES,
-            no_bunching=True
+            no_bunching=True,
         )
 
     def gen_circuit(self, n_modes: int) -> pcvl.Circuit:
@@ -286,25 +295,31 @@ class QuantumReservoirNoMem(torch.nn.Module):
         """
         # Encoding with input data (px_0)
         phi_enc = pcvl.P("px_0")
-        u_enc_u_1 = (pcvl.Circuit(2, name="U_enc, U_1")
-                     .add((0, 1), comp.BS())
-                     .add(1, comp.PS(phi=phi_enc))
-                     .add((0, 1), comp.BS())
-                     .add(1, comp.PS(phi=pcvl.P("theta_1"))))
+        u_enc_u_1 = (
+            pcvl.Circuit(2, name="U_enc, U_1")
+            .add((0, 1), comp.BS())
+            .add(1, comp.PS(phi=phi_enc))
+            .add((0, 1), comp.BS())
+            .add(1, comp.PS(phi=pcvl.P("theta_1")))
+        )
 
         # Trainable angle instead of memristor
-        u_mem = (pcvl.Circuit(2, name="U_mem_static")
-                 .add((0, 1), comp.BS())
-                 # .add(0, comp.PS(phi=pcvl.P("theta_2")))
-                 .add(0, comp.PS(phi=np.pi / 2))
-                 .add((0, 1), comp.BS()))
+        u_mem = (
+            pcvl.Circuit(2, name="U_mem_static")
+            .add((0, 1), comp.BS())
+            # .add(0, comp.PS(phi=pcvl.P("theta_2")))
+            .add(0, comp.PS(phi=np.pi / 2))
+            .add((0, 1), comp.BS())
+        )
 
         # Measurement circuit
-        u_2 = (pcvl.Circuit(2, name="U_2")
-               .add(1, comp.PS(phi=pcvl.P("theta_3")))
-               .add((0, 1), comp.BS())
-               .add(1, comp.PS(phi=pcvl.P("theta_4")))
-               .add((0, 1), comp.BS()))
+        u_2 = (
+            pcvl.Circuit(2, name="U_2")
+            .add(1, comp.PS(phi=pcvl.P("theta_3")))
+            .add((0, 1), comp.BS())
+            .add(1, comp.PS(phi=pcvl.P("theta_4")))
+            .add((0, 1), comp.BS())
+        )
 
         quantum_circ = pcvl.Circuit(n_modes)
         quantum_circ.add(0, u_enc_u_1)

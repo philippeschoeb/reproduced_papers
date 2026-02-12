@@ -78,7 +78,7 @@ for paper in "${PAPERS[@]}"; do
 
   echo "==> [$paper] setting up venv at $env_dir"
   keep_existing_venv=1
-
+  
   if [[ $keep_existing_venv -eq 0 ]] || [[ ! -f "$env_dir/bin/activate" ]]; then
     if [[ -d "$env_dir" ]] || [[ -f "$env_dir/bin/activate" ]]; then
       echo "Old venv detected, then removed and new venv installing..."

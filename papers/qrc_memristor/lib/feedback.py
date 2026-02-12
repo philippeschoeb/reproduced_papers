@@ -1,6 +1,7 @@
 from collections import deque
+from typing import Optional, Union
+
 import torch
-from typing import Optional, Union, List
 
 
 class FeedbackLayer(torch.nn.Module):
@@ -63,7 +64,13 @@ class FeedbackLayerNARMA(torch.nn.Module):
     The update rule follows: R(t) = R(t-1) + (P(t) - R(t-1)) / tau, where 'tau' corresponds to the memory size.
     """
 
-    def __init__(self, memory_size: int, r_0: float = 0.5, update_index: int = 1, eps: float = 1e-6):
+    def __init__(
+        self,
+        memory_size: int,
+        r_0: float = 0.5,
+        update_index: int = 1,
+        eps: float = 1e-6,
+    ):
         """
         Initialize the NARMA Feedback Layer.
 
@@ -86,8 +93,11 @@ class FeedbackLayerNARMA(torch.nn.Module):
         """
         self.R = None
 
-    def get_R(self, device: Optional[Union[str, torch.device]] = None,
-              dtype: Optional[torch.dtype] = None) -> torch.Tensor:
+    def get_R(
+        self,
+        device: Optional[Union[str, torch.device]] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> torch.Tensor:
         """
         Retrieves the current reflectivity value R.
         Initializes it to r_0 if it hasn't been set yet.

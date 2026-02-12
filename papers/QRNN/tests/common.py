@@ -7,14 +7,17 @@ from pathlib import Path
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = PROJECT_DIR.parents[1]
-for path in (REPO_ROOT, PROJECT_DIR):
-    if str(path) not in sys.path:
-        sys.path.insert(0, str(path))
-
-from runtime_lib.cli import build_cli_parser
-from runtime_lib.config import load_config
-from runtime_lib.dtypes import resolve_config_dtypes
-
+try:
+    from runtime_lib.cli import build_cli_parser
+    from runtime_lib.config import load_config
+    from runtime_lib.dtypes import resolve_config_dtypes
+except ModuleNotFoundError:
+    for path in (REPO_ROOT, PROJECT_DIR):
+        if str(path) not in sys.path:
+            sys.path.insert(0, str(path))
+    from runtime_lib.cli import build_cli_parser
+    from runtime_lib.config import load_config
+    from runtime_lib.dtypes import resolve_config_dtypes
 
 _CLI_SCHEMA_PATH = PROJECT_DIR / "cli.json"
 _DEFAULTS_PATH = PROJECT_DIR / "configs" / "defaults.json"

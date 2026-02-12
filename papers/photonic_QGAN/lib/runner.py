@@ -14,6 +14,7 @@ RUNNER_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = RUNNER_DIR.parent  # photonic_QGAN/
 REPO_ROOT = PROJECT_ROOT.parent.parent  # reproduced_papers/
 
+
 def _resolve_digit_list(cfg: dict) -> list[int]:
     digits_cfg = cfg.get("digits", {})
     explicit = digits_cfg.get("digits")
@@ -86,7 +87,10 @@ def _default_ideal_grid() -> list[dict]:
         {"input_state": [1, 0, 1, 1], "gen_count": 4, "pnr": True},
     ]
     arch_grid_5modes = [
-        {"noise_dim": 3, "arch": ["var", "enc[0]", "var", "enc[2]", "var", "enc[4]", "var"]},
+        {
+            "noise_dim": 3,
+            "arch": ["var", "enc[0]", "var", "enc[2]", "var", "enc[4]", "var"],
+        },
     ]
     input_grid_5modes = [
         {"input_state": [0, 1, 0, 1, 0], "gen_count": 4, "pnr": False},
@@ -100,10 +104,23 @@ def _default_ideal_grid() -> list[dict]:
             "noise_dim": 2,
             "arch": ["var", "var", "enc[2]", "var", "var", "enc[5]", "var", "var"],
         },
-        {"noise_dim": 3, "arch": ["var", "enc[1]", "var", "enc[4]", "var", "enc[6]", "var"]},
+        {
+            "noise_dim": 3,
+            "arch": ["var", "enc[1]", "var", "enc[4]", "var", "enc[6]", "var"],
+        },
         {
             "noise_dim": 4,
-            "arch": ["var", "enc[1]", "var", "enc[3]", "var", "enc[5]", "var", "enc[7]", "var"],
+            "arch": [
+                "var",
+                "enc[1]",
+                "var",
+                "enc[3]",
+                "var",
+                "enc[5]",
+                "var",
+                "enc[7]",
+                "var",
+            ],
         },
     ]
     input_grid_8modes = [
@@ -112,7 +129,7 @@ def _default_ideal_grid() -> list[dict]:
 
     config_grid: list[dict] = []
     for inp in input_grid_5modes:
-        for arch in (arch_grid_45modes + arch_grid_5modes):
+        for arch in arch_grid_45modes + arch_grid_5modes:
             config = inp.copy()
             config.update(arch)
             config_grid.append(config)
@@ -133,7 +150,7 @@ def _resolve_csv_path(
     csv_path: str | Path, data_root: str | Path | None, project_dir: Path
 ) -> Path:
     """Resolve CSV file path with multiple fallback strategies.
-    
+
     Priority order:
     1. Absolute paths are returned as-is
     2. repo_root/data/<csv_path> (default data directory)
@@ -143,23 +160,23 @@ def _resolve_csv_path(
     path = Path(csv_path)
     if path.is_absolute():
         return path
-    
+
     candidate_paths: list[Path] = []
-    
+
     # Priority 1: Default data directory at repo root
     candidate_paths.append((REPO_ROOT / "data" / path).resolve())
-    
+
     # Priority 2: Explicit data_root if provided
     if data_root:
         candidate_paths.append((Path(data_root) / path).resolve())
-    
+
     # Priority 3: Relative to project_dir (legacy fallback)
     candidate_paths.append((project_dir / path).resolve())
-    
+
     for candidate in candidate_paths:
         if candidate.exists():
             return candidate
-    
+
     raise FileNotFoundError(
         "CSV file not found; tried: "
         + ", ".join(str(candidate) for candidate in candidate_paths)
@@ -217,7 +234,6 @@ def _run_qgan(
 ) -> None:
     import numpy as np
     import perceval as pcvl
-
     from lib.qgan import QGAN
 
     model_cfg = cfg.get("model", {})
@@ -253,9 +269,7 @@ def _run_qgan(
         gen_arch,
     )
     iterator = (
-        tqdm(dataloader, desc="iter", leave=False)
-        if show_progress
-        else dataloader
+        tqdm(dataloader, desc="iter", leave=False) if show_progress else dataloader
     )
 
     def _log_progress(
@@ -323,7 +337,9 @@ def _run_qgan(
             plt.tight_layout()
             plt.savefig(run_dir / "fake_progress_last.png", dpi=150)
             plt.close()
-            log.debug("Saved image preview under {}", run_dir / "fake_progress_last.png")
+            log.debug(
+                "Saved image preview under {}", run_dir / "fake_progress_last.png"
+            )
         except Exception as exc:
             log.warning("Failed to save image preview: {}", exc)
         log.debug("Saved outputs under %s", run_dir)
@@ -375,9 +391,10 @@ def train_and_evaluate(cfg, run_dir: Path) -> None:
     project_dir = run_dir.parent.parent.resolve()
     dataset_cfg = cfg.get("dataset", {})
     csv_path = dataset_cfg.get("csv_path", "photonic_QGAN/optdigits_csv.csv")
-    
+
     # Resolve data_root: use config value, DATA_DIR env var, or default to repo_root/data
     import os
+
     data_root_cfg = cfg.get("data_root")
     if data_root_cfg:
         data_root = Path(data_root_cfg).expanduser()
@@ -385,7 +402,7 @@ def train_and_evaluate(cfg, run_dir: Path) -> None:
         data_root = Path(os.environ["DATA_DIR"]).expanduser()
     else:
         data_root = REPO_ROOT / "data"
-    
+
     logger.info("Dataset csv_path={}", csv_path)
 
     training_cfg = cfg.get("training", {})
@@ -441,7 +458,13 @@ def train_and_evaluate(cfg, run_dir: Path) -> None:
 
         for digit in digits:
             dataloader = _prepare_dataset(
-                csv_path, digit, batch_size, opt_iter_num, data_root, project_dir, logger
+                csv_path,
+                digit,
+                batch_size,
+                opt_iter_num,
+                data_root,
+                project_dir,
+                logger,
             )
             config_path = output_root / f"config_{digit}"
             config_path.mkdir(parents=True, exist_ok=True)

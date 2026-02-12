@@ -1,18 +1,20 @@
 import os
 import sys
+
 import numpy as np
 import torch
-import torch.optim as optim
 import torch.nn as nn
+import torch.optim as optim
 
-# --- PATH SETUP ---
-# Ensure the project root is in sys.path so 'lib' can be imported
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.abspath(os.path.join(current_dir, '..'))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
-
-from lib.datasets import generate_narma
+try:
+    from lib.datasets import generate_narma
+except ModuleNotFoundError:
+    # Ensure the project root is on sys.path so local `lib` imports work.
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.abspath(os.path.join(current_dir, ".."))
+    if parent_dir not in sys.path:
+        sys.path.append(parent_dir)
+    from lib.datasets import generate_narma
 
 
 class NotebookArgs:
@@ -21,7 +23,15 @@ class NotebookArgs:
     Ensures defaults match 'run_classical.py' exactly.
     """
 
-    def __init__(self, task="narma", model_type="memristor", memory=4, epochs=200, lr=0.05, n_runs=10):
+    def __init__(
+        self,
+        task="narma",
+        model_type="memristor",
+        memory=4,
+        epochs=200,
+        lr=0.05,
+        n_runs=10,
+    ):
         # Experiment Settings
         self.task = task
         self.model_type = model_type
@@ -74,7 +84,9 @@ def run_classical_benchmarks(args):
             np.random.seed(seed)
 
             # 1. GENERATE DATA (Exact same function as script)
-            u_tens, y_tens, _ = generate_narma(data_size=args.data_size, seed=seed, device=args.device)
+            u_tens, y_tens, _ = generate_narma(
+                data_size=args.data_size, seed=seed, device=args.device
+            )
 
             # 2. RESHAPE (1, Seq, 1)
             u_tens = u_tens.reshape(1, -1, 1).to(args.device)
@@ -82,12 +94,12 @@ def run_classical_benchmarks(args):
 
             # 3. SLICING (Matches run_classical.py exactly)
             # Train: [washout : train_len] (Indices 20 to 480)
-            u_train = u_tens[:, args.washout:args.train_len, :]
-            y_train = y_tens[:, args.washout:args.train_len, :]
+            u_train = u_tens[:, args.washout : args.train_len, :]
+            y_train = y_tens[:, args.washout : args.train_len, :]
 
             # Test: [train_len : end] (Indices 480 to 1000)
-            u_test = u_tens[:, args.train_len:, :]
-            y_test = y_tens[:, args.train_len:, :]
+            u_test = u_tens[:, args.train_len :, :]
+            y_test = y_tens[:, args.train_len :, :]
 
             # 4. MODEL & OPTIMIZER
             model = ClassicalBenchmark(model_type=m_type, input_dim=1).to(args.device)
@@ -96,7 +108,7 @@ def run_classical_benchmarks(args):
 
             # 5. TRAINING LOOP
             model.train()
-            for ep in range(args.epochs):
+            for _ep in range(args.epochs):
                 optimizer.zero_grad()
                 pred = model(u_train)
                 loss = criterion(pred, y_train)

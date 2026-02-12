@@ -34,7 +34,9 @@ def _mzi_with_params(prefix: str, idx: int) -> pcvl.Circuit:
     )
 
 
-def _generic_interferometer(n_modes: int, *, prefix: str, stage: int) -> pcvl.GenericInterferometer:
+def _generic_interferometer(
+    n_modes: int, *, prefix: str, stage: int
+) -> pcvl.GenericInterferometer:
     """Create a rectangular GenericInterferometer with trainable parameters."""
 
     # The idx passed by Perceval is local to this interferometer.

@@ -6,7 +6,6 @@ from typing import Any
 
 from lib.runner import DEFAULT_EXPERIMENT, EXPERIMENT_SPECS
 
-
 _PARAM_TARGETS: dict[str, set[str]] = {
     "input_state": {"accuracy_vs_kernel"},
     "input_states": {"accuracy_vs_input_state"},
@@ -38,7 +37,11 @@ _PARAM_TARGETS: dict[str, set[str]] = {
         "accuracy_vs_width",
         "accuracy_vs_geometric_difference",
     },
-    "data_sizes": {"accuracy_vs_kernel", "accuracy_vs_input_state", "accuracy_vs_width"},
+    "data_sizes": {
+        "accuracy_vs_kernel",
+        "accuracy_vs_input_state",
+        "accuracy_vs_width",
+    },
     "widths": {"accuracy_vs_width"},
     "num_points": {"accuracy_vs_geometric_difference"},
     "n": {"accuracy_vs_geometric_difference"},

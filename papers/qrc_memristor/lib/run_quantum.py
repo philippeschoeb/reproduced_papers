@@ -1,30 +1,40 @@
 import argparse
-import json
 import logging
 import os
 import sys
-import torch
-import numpy as np
 from datetime import datetime
+from typing import Any, Optional
+
+import numpy as np
+import torch
 from sklearn.linear_model import Ridge
-from typing import Optional, Dict, Any, List, Union
 
 # Path fix: 3 levels up (lib -> qmem -> reproduced_papers -> ROOT)
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
 import utils.create_plots as plot_module
-from utils.utils import *
-from lib.quantum_reservoir import QuantumReservoirFeedback, QuantumReservoirFeedbackTimeSeries, QuantumReservoirNoMem
+from lib.quantum_reservoir import (
+    QuantumReservoirFeedback,
+    QuantumReservoirFeedbackTimeSeries,
+    QuantumReservoirNoMem,
+)
 from lib.training import (
-    run_narma_multiple,
-    train_sequence,
     extract_features_sequence,
     fit_readout_mse,
-    get_param_snapshot
+    get_param_snapshot,
+    run_narma_multiple,
+    train_sequence,
+)
+from utils.datasets import get_dataset
+from utils.utils import (
+    get_clean_config_quantum,
+    load_config_file,
+    save_json,
+    setup_logging,
 )
 
 
-def run_narma_task(args: argparse.Namespace) -> Dict[str, Any]:
+def run_narma_task(args: argparse.Namespace) -> dict[str, Any]:
     """
     Executes the NARMA benchmark task using the Quantum Reservoir with Feedback.
 
@@ -39,11 +49,13 @@ def run_narma_task(args: argparse.Namespace) -> Dict[str, Any]:
             - 'all_mses' (List[float]): List of MSEs for each run.
             - 'plot_data' (Dict): Data required to generate plots (best targets/predictions).
     """
-    logging.info(f"=== Starting NARMA Task ===")
+    logging.info("=== Starting NARMA Task ===")
     logging.info(f"Model: QuantumReservoirFeedbackTimeSeries | Memory: {args.memory}")
 
     def model_builder():
-        return QuantumReservoirFeedbackTimeSeries(input_dim=1, n_modes=3, memory=args.memory)
+        return QuantumReservoirFeedbackTimeSeries(
+            input_dim=1, n_modes=3, memory=args.memory
+        )
 
     mean_mse, std_mse, all_mses, best_y_target, best_y_pred = run_narma_multiple(
         model_builder=model_builder,
@@ -52,7 +64,7 @@ def run_narma_task(args: argparse.Namespace) -> Dict[str, Any]:
         washout=args.washout,
         train=args.train_len,
         base_seed=args.seed,
-        device=args.device
+        device=args.device,
     )
 
     logging.info(f"FINAL RESULT >> Mean MSE: {mean_mse:.6f} +/- {std_mse:.6f}")
@@ -60,16 +72,18 @@ def run_narma_task(args: argparse.Namespace) -> Dict[str, Any]:
     plot_data = {
         "y_test": best_y_target,
         "y_pred": best_y_pred,
-        "mse": np.min(all_mses)
+        "mse": np.min(all_mses),
     }
 
     return {
-        "mean_mse": mean_mse, "std_mse": std_mse, "all_mses": all_mses,
-        "plot_data": plot_data
+        "mean_mse": mean_mse,
+        "std_mse": std_mse,
+        "all_mses": all_mses,
+        "plot_data": plot_data,
     }
 
 
-def run_general_timeseries_task(args: argparse.Namespace) -> Dict[str, Any]:
+def run_general_timeseries_task(args: argparse.Namespace) -> dict[str, Any]:
     """
     Executes general time-series prediction tasks (Mackey-Glass, Santa Fe)
     using the Quantum Reservoir with Feedback.
@@ -89,7 +103,7 @@ def run_general_timeseries_task(args: argparse.Namespace) -> Dict[str, Any]:
 
     all_mses = []
     best_plot_data = None
-    min_mse = float('inf')
+    min_mse = float("inf")
 
     for i in range(args.n_runs):
         seed = args.seed + i
@@ -97,15 +111,21 @@ def run_general_timeseries_task(args: argparse.Namespace) -> Dict[str, Any]:
         np.random.seed(seed)
 
         u_raw, y_raw = get_dataset(args.task, args.data_size)
-        u_tensor = torch.tensor(u_raw, dtype=torch.float32).reshape(1, -1, 1).to(args.device)
-        y_tensor = torch.tensor(y_raw, dtype=torch.float32).reshape(1, -1, 1).to(args.device)
+        u_tensor = (
+            torch.tensor(u_raw, dtype=torch.float32).reshape(1, -1, 1).to(args.device)
+        )
+        y_tensor = (
+            torch.tensor(y_raw, dtype=torch.float32).reshape(1, -1, 1).to(args.device)
+        )
 
         washout = args.washout
         train_len = args.train_len
         if args.task == "santa_fe" and train_len > u_tensor.shape[1] - 50:
             train_len = int(u_tensor.shape[1] * 0.7)
 
-        model = QuantumReservoirFeedbackTimeSeries(input_dim=1, n_modes=3, memory=args.memory).to(args.device)
+        model = QuantumReservoirFeedbackTimeSeries(
+            input_dim=1, n_modes=3, memory=args.memory
+        ).to(args.device)
 
         with torch.no_grad():
             X_feat = extract_features_sequence(model, u_tensor, memory=True)
@@ -132,12 +152,14 @@ def run_general_timeseries_task(args: argparse.Namespace) -> Dict[str, Any]:
     logging.info(f"FINAL RESULT >> Mean MSE: {mean_mse:.6f} +/- {std_mse:.6f}")
 
     return {
-        "mean_mse": mean_mse, "std_mse": std_mse, "all_mses": all_mses,
-        "plot_data": best_plot_data
+        "mean_mse": mean_mse,
+        "std_mse": std_mse,
+        "all_mses": all_mses,
+        "plot_data": best_plot_data,
     }
 
 
-def run_nonlinear_task(args: argparse.Namespace) -> Dict[str, Any]:
+def run_nonlinear_task(args: argparse.Namespace) -> dict[str, Any]:
     """
     Executes the Non-Linear function prediction task (e.g., y = x^4).
     Compares models with and without memristive feedback.
@@ -154,7 +176,7 @@ def run_nonlinear_task(args: argparse.Namespace) -> Dict[str, Any]:
             - 'best_run' (Dict): Details of the best performing run (index, params).
             - 'plot_data' (Dict): Data for plotting the best fit.
     """
-    logging.info(f"=== Starting Non-Linear Function Task ===")
+    logging.info("=== Starting Non-Linear Function Task ===")
 
     def build_model_fn():
         if args.model_type == "nomem":
@@ -162,7 +184,7 @@ def run_nonlinear_task(args: argparse.Namespace) -> Dict[str, Any]:
         else:
             return QuantumReservoirFeedback(input_dim=1, n_modes=3, memory=args.memory)
 
-    best_run = {"mse": float('inf'), "run_index": -1, "params": None}
+    best_run = {"mse": float("inf"), "run_index": -1, "params": None}
     best_plot_data = None
     all_mses = []
 
@@ -179,10 +201,17 @@ def run_nonlinear_task(args: argparse.Namespace) -> Dict[str, Any]:
         x_train, y_train = x_dev[:split], y_dev[:split]
 
         model = build_model_fn().to(args.device)
-        mem_flag = (args.model_type == "memristor")
+        mem_flag = args.model_type == "memristor"
 
-        train_sequence(model, x_train, y_train, model_name=f"Run {i + 1}", n_epochs=args.epochs, lr=args.lr,
-                       memory=mem_flag)
+        train_sequence(
+            model,
+            x_train,
+            y_train,
+            model_name=f"Run {i + 1}",
+            n_epochs=args.epochs,
+            lr=args.lr,
+            memory=mem_flag,
+        )
 
         with torch.no_grad():
             X_feat = extract_features_sequence(model, x_dev, memory=mem_flag)
@@ -196,7 +225,8 @@ def run_nonlinear_task(args: argparse.Namespace) -> Dict[str, Any]:
             best_run["run_index"] = i
             best_run["params"] = get_param_snapshot(model)
 
-            if X_feat.ndim == 3: X_feat = X_feat[0]
+            if X_feat.ndim == 3:
+                X_feat = X_feat[0]
             X_train_np = X_feat[:split].cpu().numpy()
             y_train_np = y_dev[:split].cpu().numpy()
             ridge = Ridge(alpha=1e-5)
@@ -207,7 +237,7 @@ def run_nonlinear_task(args: argparse.Namespace) -> Dict[str, Any]:
                 "x": x_dev.cpu().numpy().flatten(),
                 "y_target": y_dev.cpu().numpy().flatten(),
                 "y_pred": y_pred_full,
-                "mse": test_mse
+                "mse": test_mse,
             }
 
     mean_mse = np.mean(all_mses)
@@ -215,12 +245,15 @@ def run_nonlinear_task(args: argparse.Namespace) -> Dict[str, Any]:
     logging.info(f"FINAL RESULT >> Mean MSE: {mean_mse:.6f} +/- {std_mse:.6f}")
 
     return {
-        "mean_mse": mean_mse, "std_mse": std_mse, "all_mses": all_mses,
-        "best_run": best_run, "plot_data": best_plot_data
+        "mean_mse": mean_mse,
+        "std_mse": std_mse,
+        "all_mses": all_mses,
+        "best_run": best_run,
+        "plot_data": best_plot_data,
     }
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     """
     Main entry point for running quantum reservoir experiments.
     Parses arguments, sets up logging, dispatches tasks, and saves results.
@@ -235,7 +268,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(allow_abbrev=False)
 
     parser.add_argument("--config", type=str, help="Path to JSON config file")
-    parser.add_argument("--task", type=str, choices=["narma", "nonlinear", "mackey_glass", "santa_fe"])
+    parser.add_argument(
+        "--task", type=str, choices=["narma", "nonlinear", "mackey_glass", "santa_fe"]
+    )
     parser.add_argument("--model-type", type=str, choices=["memristor", "nomem"])
     parser.add_argument("--n-runs", type=int)
     parser.add_argument("--memory", type=int)
@@ -265,7 +300,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "epochs": 200,
         "lr": 0.01,
         "output_dir": "./results",
-        "exp_name": ""
+        "exp_name": "",
     }
 
     config_vals = {}
@@ -273,8 +308,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         if os.path.exists(args.config):
             print(f"Loading configuration from {args.config}...")
             config_vals = load_config_file(args.config)
-            if 'size' in config_vals and 'data_size' not in config_vals:
-                config_vals['data_size'] = config_vals.pop('size')
+            if "size" in config_vals and "data_size" not in config_vals:
+                config_vals["data_size"] = config_vals.pop("size")
         else:
             print(f"Warning: Config file {args.config} not found. Using defaults.")
 
@@ -289,7 +324,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if not args.task:
         # It's possible --task is missing if running purely from defaults, but usually required.
-        print("Error: The --task argument is required (or must be specified in --config).")
+        print(
+            "Error: The --task argument is required (or must be specified in --config)."
+        )
         return 1
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -330,7 +367,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 logging.error(f"Failed to generate plots: {e}")
 
     if args.task == "nonlinear" and results.get("best_run"):
-        save_json(results["best_run"]["params"], os.path.join(save_path, "best_params.json"))
+        save_json(
+            results["best_run"]["params"], os.path.join(save_path, "best_params.json")
+        )
 
     return 0
 

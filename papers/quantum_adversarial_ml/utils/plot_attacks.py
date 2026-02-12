@@ -64,7 +64,9 @@ def plot_attack_from_results(
 
     # Add value labels on bars
     for i, (_cat, acc) in enumerate(zip(categories, accuracies)):
-        axes[0].text(i, acc + 0.02, f"{acc:.1%}", ha="center", fontsize=12, fontweight="bold")
+        axes[0].text(
+            i, acc + 0.02, f"{acc:.1%}", ha="center", fontsize=12, fontweight="bold"
+        )
 
     # Metrics summary
     metrics = {
@@ -89,8 +91,13 @@ def plot_attack_from_results(
 
     # Add value labels
     for bar, val in zip(bars, values):
-        axes[1].text(val + 0.02, bar.get_y() + bar.get_height()/2,
-                     f"{val:.3f}", va="center", fontsize=11)
+        axes[1].text(
+            val + 0.02,
+            bar.get_y() + bar.get_height() / 2,
+            f"{val:.3f}",
+            va="center",
+            fontsize=11,
+        )
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
@@ -135,8 +142,10 @@ def plot_robustness_from_results(
     for (attack_name, eps_dict), color in zip(robustness.items(), colors):
         if isinstance(eps_dict, dict):
             epsilons = sorted([float(e) for e in eps_dict.keys()])
-            accuracies = [eps_dict[str(e)] if str(e) in eps_dict else eps_dict[e]
-                          for e in epsilons]
+            accuracies = [
+                eps_dict[str(e)] if str(e) in eps_dict else eps_dict[e]
+                for e in epsilons
+            ]
         else:
             continue
 
@@ -205,7 +214,14 @@ def plot_attack_progress_from_results(
     iterations = range(len(accuracies))
 
     # Accuracy vs iteration
-    ax1.plot(iterations, accuracies, "b-o", label=attack_name.upper(), linewidth=2, markersize=6)
+    ax1.plot(
+        iterations,
+        accuracies,
+        "b-o",
+        label=attack_name.upper(),
+        linewidth=2,
+        markersize=6,
+    )
     ax1.set_xlabel("Iteration", fontsize=12)
     ax1.set_ylabel("Accuracy", fontsize=12)
     ax1.set_title(f"{attack_name.upper()} - Accuracy vs Iteration", fontsize=14)
@@ -215,7 +231,14 @@ def plot_attack_progress_from_results(
 
     # Accuracy vs fidelity
     if fidelities is not None:
-        ax2.plot(fidelities, accuracies, "r-o", label=attack_name.upper(), linewidth=2, markersize=6)
+        ax2.plot(
+            fidelities,
+            accuracies,
+            "r-o",
+            label=attack_name.upper(),
+            linewidth=2,
+            markersize=6,
+        )
         ax2.set_xlabel("Average Fidelity", fontsize=12)
         ax2.set_ylabel("Accuracy", fontsize=12)
         ax2.set_title(f"{attack_name.upper()} - Accuracy vs Fidelity", fontsize=14)

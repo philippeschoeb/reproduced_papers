@@ -5,10 +5,11 @@ This module defines a boson sampler wrapper that builds parameterized
 photonic circuits and exposes a QuantumLayer for training.
 """
 
+from math import comb, pi
+
+import merlin as ML
 import perceval as pcvl
 import torch
-from math import comb, pi
-import merlin as ML
 
 
 ## Quantum-Train Inspired ##
@@ -41,11 +42,10 @@ class BosonSampler:
         """
         self.m = m
         self.n = n
-        assert (
-            n <= m
-        ), "Got more modes than photons, can only input 0 or 1 photon per mode"
+        assert n <= m, (
+            "Got more modes than photons, can only input 0 or 1 photon per mode"
+        )
         self.quantum_layer = self.create_quantum_layer(qnn_layers=qnn_layers)
-        self.quantum_layer
 
     @property
     def _nb_parameters_needed(self) -> int:

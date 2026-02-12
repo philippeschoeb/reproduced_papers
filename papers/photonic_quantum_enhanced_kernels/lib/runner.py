@@ -80,7 +80,9 @@ def _build_experiment_config(cfg: dict[str, Any], name: str) -> dict[str, Any]:
     return exp_cfg
 
 
-def _run_experiment(name: str, exp_cfg: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+def _run_experiment(
+    name: str, exp_cfg: dict[str, Any], output_dir: Path
+) -> dict[str, Any]:
     callable_path = EXPERIMENT_SPECS[name]
     runner = import_callable(callable_path)
     return runner(exp_cfg, output_dir)

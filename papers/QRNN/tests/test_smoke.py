@@ -46,7 +46,7 @@ def test_runtime_smoke(monkeypatch, tmp_path):
                 "target_column": "temperature",
                 "feature_columns": ["temperature", "humidity"],
                 "time_column": "timestamp",
-            }
+            },
         }
         override_path = tmp_path / "override.json"
         override_path.write_text(json.dumps(override_cfg), encoding="utf-8")

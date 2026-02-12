@@ -1,13 +1,13 @@
 import copy
 
-from merlin.algorithms import FeatureMap, FidelityKernel
 import numpy as np
+from merlin.algorithms import FeatureMap, FidelityKernel
 from numpy import ndarray
 from perceval import GenericInterferometer, InterferometerShape
-from scipy.linalg import sqrtm, inv
+from scipy.linalg import inv, sqrtm
 
-from .noise import NoisySLOSComputeGraph
 from .feature_map import circuit_func
+from .noise import NoisySLOSComputeGraph
 
 
 def generate_data(
@@ -37,20 +37,19 @@ def generate_data(
             photons.
     """
     if input_state is None and quantum_kernel is None:
-        raise ValueError("Please provide either an input_state or a"
-        "quantum kernel instance."
-    )
+        raise ValueError(
+            "Please provide either an input_state or aquantum kernel instance."
+        )
     if quantum_kernel is None:
         m = len(input_state)
 
         # Set up feature map
 
         circuit = GenericInterferometer(
-            m, circuit_func,
-            shape=InterferometerShape.RECTANGLE
+            m, circuit_func, shape=InterferometerShape.RECTANGLE
         )
         input_size = len(circuit.get_parameters())
-        feature_map = FeatureMap(circuit, input_size, input_parameters='phi')
+        feature_map = FeatureMap(circuit, input_size, input_parameters="phi")
 
         # Set up quantum kernels
         quantum_kernel = FidelityKernel(
@@ -71,7 +70,7 @@ def generate_data(
 
     # Generate X, y values
     input_size = quantum_kernel.input_size
-    X = np.random.uniform(0, 2*np.pi, size=(data_size, input_size))
+    X = np.random.uniform(0, 2 * np.pi, size=(data_size, input_size))
 
     K2 = quantum_kernel(X).detach().numpy()
 

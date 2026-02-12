@@ -102,7 +102,6 @@ def run_accuracy_vs_input_state(
     from perceval import GenericInterferometer
     from sklearn.svm import SVC
     from tqdm import tqdm
-
     from utils.feature_map import circuit_func
     from utils.generate_data import generate_data
     from utils.noise import NoisySLOSComputeGraph
@@ -170,7 +169,7 @@ def run_accuracy_vs_input_state(
                         train_idx_rep = train_idx[: int(data_size * train_size)]
                         test_idx_rep = test_idx[: int(data_size * test_size)]
 
-                        X_train, X_test = X[train_idx_rep], X[test_idx_rep]
+                        _X_train, _X_test = X[train_idx_rep], X[test_idx_rep]
                         y_train, y_test = y[train_idx_rep], y[test_idx_rep]
 
                     kernel_train_idx = np.ix_(train_idx_rep, train_idx_rep)

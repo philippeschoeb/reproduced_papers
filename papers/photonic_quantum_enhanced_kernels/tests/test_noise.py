@@ -3,9 +3,8 @@ import random
 import numpy as np
 import pytest
 import torch
-from utils.noise import NoisySLOSComputeGraph
 from perceval import BasicState, Circuit, Matrix, NoiseModel, Processor, Unitary
-
+from utils.noise import NoisySLOSComputeGraph
 
 
 @pytest.mark.parametrize(

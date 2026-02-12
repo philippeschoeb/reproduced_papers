@@ -2,38 +2,35 @@ import argparse
 import json
 import os
 import sys
-import numpy as np
-import torch
-import matplotlib.pyplot as plt
+
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
-from sklearn.linear_model import Ridge, LinearRegression
-from matplotlib.ticker import LogLocator, LogFormatter
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from sklearn.linear_model import LinearRegression
 
 # --- PATH SETUP ---
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from lib.quantum_reservoir import QuantumReservoirFeedback, QuantumReservoirFeedbackTimeSeries, QuantumReservoirNoMem
-from utils.datasets import get_dataset
-from lib.training import extract_features_sequence, fit_readout_narma
 
 # --- STYLE CONFIGURATION ---
 sns.set_style("whitegrid")
 
-mpl.rcParams.update({
-    "text.usetex": True,        # Use LaTeX for all text
-    "font.family": "serif",     # Serif font (Computer Modern)
-    "font.serif": ["Computer Modern Roman"],
-    "axes.labelsize": 14,
-    "xtick.labelsize": 12,
-    "ytick.labelsize": 12,
-    "legend.fontsize": 12,
-})
+mpl.rcParams.update(
+    {
+        "text.usetex": True,  # Use LaTeX for all text
+        "font.family": "serif",  # Serif font (Computer Modern)
+        "font.serif": ["Computer Modern Roman"],
+        "axes.labelsize": 14,
+        "xtick.labelsize": 12,
+        "ytick.labelsize": 12,
+        "legend.fontsize": 12,
+    }
+)
 
 
 def load_json(filepath):
-    with open(filepath, 'r') as f:
+    with open(filepath) as f:
         return json.load(f)
 
 
@@ -71,10 +68,10 @@ def plot_nonlinear_from_file(result_dir, plot_data):
     print(f"Plotting Nonlinear Results from {result_dir}...")
 
     # Load Data
-    x = np.array(plot_data['x']) if 'x' in plot_data else None
-    y_target = np.array(plot_data['y_target'])
-    y_pred = np.array(plot_data['y_pred'])
-    mse = plot_data['mse']
+    x = np.array(plot_data["x"]) if "x" in plot_data else None
+    y_target = np.array(plot_data["y_target"])
+    y_pred = np.array(plot_data["y_pred"])
+    mse = plot_data["mse"]
 
     # If x wasn't saved, regenerate it (standard linspace)
     if x is None:
@@ -82,16 +79,20 @@ def plot_nonlinear_from_file(result_dir, plot_data):
 
     fig, ax = plt.subplots(figsize=(8, 6))
 
-    ax.plot(x, y_target, color='black', linestyle='-', linewidth=3, label='Target ($x^4$)')
-    ax.plot(x, y_pred, color='#d62728', linestyle='--', linewidth=2.5, label='Prediction')
+    ax.plot(
+        x, y_target, color="black", linestyle="-", linewidth=3, label="Target ($x^4$)"
+    )
+    ax.plot(
+        x, y_pred, color="#d62728", linestyle="--", linewidth=2.5, label="Prediction"
+    )
 
-    ax.set_title(f"Non-linear Task Results\nMSE: {mse:.2e}", fontweight='bold')
+    ax.set_title(f"Non-linear Task Results\nMSE: {mse:.2e}", fontweight="bold")
     ax.set_xlabel("Input $x$")
     ax.set_ylabel("Output $y$")
-    ax.legend(loc='upper left', frameon=True)
+    ax.legend(loc="upper left", frameon=True)
 
     save_path = os.path.join(result_dir, "Figure_3_Result.png")
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.savefig(save_path, dpi=300, bbox_inches="tight")
     print(f"Saved plot to {save_path}")
     plt.show()
     plt.close()  # Close to free memory if running in loop
@@ -103,9 +104,9 @@ def plot_narma_from_file(result_dir, plot_data):
     """
     print(f"Plotting NARMA Results from {result_dir}...")
 
-    y_test = np.array(plot_data['y_test'])
-    y_pred = np.array(plot_data['y_pred'])
-    mse = plot_data['mse']
+    y_test = np.array(plot_data["y_test"])
+    y_pred = np.array(plot_data["y_pred"])
+    mse = plot_data["mse"]
 
     fig, ax = plt.subplots(figsize=(10, 5))
 
@@ -113,26 +114,48 @@ def plot_narma_from_file(result_dir, plot_data):
     start_step = 50
     end_step = 250
 
-    if end_step > len(y_test): end_step = len(y_test)
+    if end_step > len(y_test):
+        end_step = len(y_test)
 
-    t = np.arange(500+start_step, 500+end_step)
+    t = np.arange(500 + start_step, 500 + end_step)
 
-    ax.plot(t, y_test[start_step:end_step], color='#808080', linestyle='-', label='Target', linewidth=2)
-    ax.plot(t, y_pred[start_step:end_step], color='g', linestyle='-', label='Prediction', linewidth=2)
+    ax.plot(
+        t,
+        y_test[start_step:end_step],
+        color="#808080",
+        linestyle="-",
+        label="Target",
+        linewidth=2,
+    )
+    ax.plot(
+        t,
+        y_pred[start_step:end_step],
+        color="g",
+        linestyle="-",
+        label="Prediction",
+        linewidth=2,
+    )
 
-    ax.set_title("NARMA10 Prediction (Test Phase)", fontweight='bold')
+    ax.set_title("NARMA10 Prediction (Test Phase)", fontweight="bold")
     ax.set_xlabel("Time Step")
     ax.set_ylabel("Value")
-    ax.legend(loc='upper left')
+    ax.legend(loc="upper left")
 
     # MSE Box
-    ax.text(0.95, 0.95, f'MSE: {mse:.2e}',
-            horizontalalignment='right', verticalalignment='top',
-            transform=ax.transAxes, fontsize=12, fontweight='bold',
-            bbox=dict(facecolor='white', alpha=0.9, edgecolor='gray'))
+    ax.text(
+        0.95,
+        0.95,
+        f"MSE: {mse:.2e}",
+        horizontalalignment="right",
+        verticalalignment="top",
+        transform=ax.transAxes,
+        fontsize=12,
+        fontweight="bold",
+        bbox={"facecolor": "white", "alpha": 0.9, "edgecolor": "gray"},
+    )
 
     save_path = os.path.join(result_dir, "Figure_4_Result.png")
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.savefig(save_path, dpi=300, bbox_inches="tight")
     print(f"Saved plot to {save_path}")
     plt.show()
     plt.close()
@@ -153,7 +176,7 @@ def plot_from_dir(result_dir):
     plot_data = load_json(plot_data_path)
 
     # Determine Task
-    task = config.get('task', config.get('experiment', {}).get('task'))
+    task = config.get("task", config.get("experiment", {}).get("task"))
 
     if task == "nonlinear":
         plot_nonlinear_from_file(result_dir, plot_data)
@@ -166,7 +189,9 @@ def plot_from_dir(result_dir):
         print(f"Unknown task '{task}', cannot plot.")
 
 
-def plot_nonlinear_notebook(results_dict_mem, results_dict_nomem, title="Nonlinear Task"):
+def plot_nonlinear_notebook(
+    results_dict_mem, results_dict_nomem, title="Nonlinear Task"
+):
     """
     Plots Nonlinear task results from the dictionary returned by run_experiment.
     """
@@ -194,28 +219,46 @@ def plot_nonlinear_notebook(results_dict_mem, results_dict_nomem, title="Nonline
     fig, ax = plt.subplots(figsize=(8, 6))
 
     # Target
-    ax.plot(x, y_true, color='black', linestyle='-', linewidth=2, label='Target ($x^4$)')
+    ax.plot(
+        x, y_true, color="black", linestyle="-", linewidth=2, label="Target ($x^4$)"
+    )
 
-    plt.axvline(x[int(0.9 * len(y_pred_mem))], color="black", linestyle="dotted", linewidth=2,
-                label='Train/Test Split')
+    plt.axvline(
+        x[int(0.9 * len(y_pred_mem))],
+        color="black",
+        linestyle="dotted",
+        linewidth=2,
+        label="Train/Test Split",
+    )
 
     # Linear Regression
-    ax.plot(x, y_pred_lin, color='green', linestyle='-.', linewidth=2.5, label=f'Linear Reg. (MSE: {mse_lin:.1e})')
+    ax.plot(
+        x,
+        y_pred_lin,
+        color="green",
+        linestyle="-.",
+        linewidth=2.5,
+        label=f"Linear Reg. (MSE: {mse_lin:.1e})",
+    )
 
     # No Memristor
     # ax.plot(x, y_pred_nomem, color='orange', linestyle='--', linewidth=2.5,
     #         label=f'No Memristor (MSE: {mse_nomem:.1e})')
-    ax.scatter(x, y_pred_nomem, color='orange', label=f'No Memristor (MSE: {mse_nomem:.1e})')
+    ax.scatter(
+        x, y_pred_nomem, color="orange", label=f"No Memristor (MSE: {mse_nomem:.1e})"
+    )
 
     # Memristor
     # ax.plot(x, y_pred_mem, color='#1f77b4', linestyle='-.', linewidth=2.5,
     #         label=f'Q. Memristor (MSE: {mse_mem:.1e})')
-    ax.scatter(x, y_pred_mem, color='#1f77b4', label=f'Q. Memristor (MSE: {mse_mem:.1e})')
+    ax.scatter(
+        x, y_pred_mem, color="#1f77b4", label=f"Q. Memristor (MSE: {mse_mem:.1e})"
+    )
 
-    ax.set_title("Non-linear Transformation Task ($x^4$)", fontweight='bold')
+    ax.set_title("Non-linear Transformation Task ($x^4$)", fontweight="bold")
     ax.set_xlabel("Input $x$")
     ax.set_ylabel("Output $y$")
-    ax.legend(loc='upper left', frameon=True)
+    ax.legend(loc="upper left", frameon=True)
 
     plt.title(title)
     plt.xlabel("Input (x)")
@@ -244,23 +287,45 @@ def plot_narma_notebook(results_dict, title="NARMA Prediction"):
     start_step = 50
     end_step = 250
 
-    if end_step > len(y_test): end_step = len(y_test)
+    if end_step > len(y_test):
+        end_step = len(y_test)
 
     t = np.arange(500 + start_step, 500 + end_step)
 
-    ax.plot(t, y_test[start_step:end_step], color='#808080', linestyle='-', label='Target', linewidth=2)
-    ax.plot(t, y_pred[start_step:end_step], color='g', linestyle='-', label='Prediction', linewidth=2)
+    ax.plot(
+        t,
+        y_test[start_step:end_step],
+        color="#808080",
+        linestyle="-",
+        label="Target",
+        linewidth=2,
+    )
+    ax.plot(
+        t,
+        y_pred[start_step:end_step],
+        color="g",
+        linestyle="-",
+        label="Prediction",
+        linewidth=2,
+    )
 
-    ax.set_title("NARMA10 Prediction (Test Phase)", fontweight='bold')
+    ax.set_title("NARMA10 Prediction (Test Phase)", fontweight="bold")
     ax.set_xlabel("Time Step")
     ax.set_ylabel("Value")
-    ax.legend(loc='upper left')
+    ax.legend(loc="upper left")
 
     # MSE Box
-    ax.text(0.95, 0.95, f'MSE: {mse:.2e}',
-            horizontalalignment='right', verticalalignment='top',
-            transform=ax.transAxes, fontsize=12, fontweight='bold',
-            bbox=dict(facecolor='white', alpha=0.9, edgecolor='gray'))
+    ax.text(
+        0.95,
+        0.95,
+        f"MSE: {mse:.2e}",
+        horizontalalignment="right",
+        verticalalignment="top",
+        transform=ax.transAxes,
+        fontsize=12,
+        fontweight="bold",
+        bbox={"facecolor": "white", "alpha": 0.9, "edgecolor": "gray"},
+    )
 
     plt.title(title)
     plt.xlabel("Time Step")

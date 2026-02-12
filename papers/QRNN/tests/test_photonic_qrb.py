@@ -49,11 +49,15 @@ def test_build_qrb_circuit_has_expected_io_params():
 
 def test_partial_measurement_to_dual_rail_probabilities():
     import merlin as ml
-
-    from merlin.core.partial_measurement import PartialMeasurement, PartialMeasurementBranch
+    from lib.qrb_readout import (
+        DualRailReadoutSpec,
+        partial_measurement_to_dual_rail_probabilities,
+    )
+    from merlin.core.partial_measurement import (
+        PartialMeasurement,
+        PartialMeasurementBranch,
+    )
     from merlin.core.state_vector import StateVector
-
-    from lib.qrb_readout import DualRailReadoutSpec, partial_measurement_to_dual_rail_probabilities
 
     k = 2
     # Dummy conditional state on 2 modes with 1 photon.
@@ -77,7 +81,9 @@ def test_partial_measurement_to_dual_rail_probabilities():
         unmeasured_modes=(4, 5),
     )
 
-    probs = partial_measurement_to_dual_rail_probabilities(pm, spec=DualRailReadoutSpec(k=k))
+    probs = partial_measurement_to_dual_rail_probabilities(
+        pm, spec=DualRailReadoutSpec(k=k)
+    )
     assert probs.shape == (1, 2**k)
     assert torch.allclose(probs.sum(dim=1), torch.tensor([1.0], dtype=probs.dtype))
 
@@ -90,13 +96,16 @@ def test_partial_measurement_to_dual_rail_probabilities():
 
 
 def test_project_fock_amplitudes_to_dual_rail_one_qubit():
-    from merlin.core.state_vector import StateVector
-
     from lib.qrb_readout import project_fock_amplitudes_to_dual_rail
+    from merlin.core.state_vector import StateVector
 
     # n_qubits=1 => 2 modes, 1 photon, dual-rail size 2.
     # Put amplitude on |10> (photon in the first rail).
-    state = StateVector(tensor=torch.tensor([1.0 + 0.0j, 0.0 + 0.0j], dtype=torch.complex128), n_modes=2, n_photons=1)
+    state = StateVector(
+        tensor=torch.tensor([1.0 + 0.0j, 0.0 + 0.0j], dtype=torch.complex128),
+        n_modes=2,
+        n_photons=1,
+    )
 
     projected = project_fock_amplitudes_to_dual_rail(state, n_qubits=1)
     assert projected.shape == (2,)

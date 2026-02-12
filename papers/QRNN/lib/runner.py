@@ -7,13 +7,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
+from torch import nn
 from torch.utils.data import DataLoader
 
 from runtime_lib.dtypes import describe_dtype, dtype_torch
 
 from .data import build_dataloaders
-from torch import nn
-
 from .model import RNNRegressor
 from .training import fit
 

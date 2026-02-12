@@ -40,10 +40,12 @@ class ScaleLayer(nn.Module):
 def create_vqc_general(num_modes: int, input_size: int) -> pcvl.Circuit:
     wl = pcvl.GenericInterferometer(
         num_modes,
-        lambda i: pcvl.BS()
-        // pcvl.PS(pcvl.P(f"theta_li{i}_ps"))
-        // pcvl.BS()
-        // pcvl.PS(pcvl.P(f"theta_lo{i}_ps")),
+        lambda i: (
+            pcvl.BS()
+            // pcvl.PS(pcvl.P(f"theta_li{i}_ps"))
+            // pcvl.BS()
+            // pcvl.PS(pcvl.P(f"theta_lo{i}_ps"))
+        ),
         shape=pcvl.InterferometerShape.RECTANGLE,
     )
 
@@ -54,10 +56,12 @@ def create_vqc_general(num_modes: int, input_size: int) -> pcvl.Circuit:
 
     wr = pcvl.GenericInterferometer(
         num_modes,
-        lambda i: pcvl.BS()
-        // pcvl.PS(pcvl.P(f"theta_ri{i}_ps"))
-        // pcvl.BS()
-        // pcvl.PS(pcvl.P(f"theta_ro{i}_ps")),
+        lambda i: (
+            pcvl.BS()
+            // pcvl.PS(pcvl.P(f"theta_ri{i}_ps"))
+            // pcvl.BS()
+            // pcvl.PS(pcvl.P(f"theta_ro{i}_ps"))
+        ),
         shape=pcvl.InterferometerShape.RECTANGLE,
     )
 

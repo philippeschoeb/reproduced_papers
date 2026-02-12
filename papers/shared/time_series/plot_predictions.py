@@ -17,10 +17,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections.abc import Iterable
 from pathlib import Path
-import re
 
 import numpy as np
 import pandas as pd
@@ -34,9 +34,11 @@ def _ensure_repo_root_on_syspath() -> None:
         sys.path.insert(0, str(repo_root))
 
 
-_ensure_repo_root_on_syspath()
-
-from papers.shared.time_series.plotting import maybe_use_agg_backend, save_figure
+try:
+    from papers.shared.time_series.plotting import maybe_use_agg_backend, save_figure
+except ModuleNotFoundError:
+    _ensure_repo_root_on_syspath()
+    from papers.shared.time_series.plotting import maybe_use_agg_backend, save_figure
 
 
 def _load_config(run_dir: Path) -> dict:
@@ -100,7 +102,9 @@ def _parse_run_specs(specs: list[str]) -> tuple[list[Path], list[str] | None]:
         labels.append(label)
 
     if any(lbl is not None for lbl in labels):
-        finalized = [lbl if lbl is not None else rd.name for rd, lbl in zip(run_dirs, labels)]
+        finalized = [
+            lbl if lbl is not None else rd.name for rd, lbl in zip(run_dirs, labels)
+        ]
         return run_dirs, finalized
     return run_dirs, None
 
@@ -287,7 +291,9 @@ def main(argv: list[str] | None = None) -> int:
     run_dirs, spec_labels = _parse_run_specs(list(args.run_dirs))
     flag_labels = _parse_labels(args.labels, expected=len(run_dirs))
     if spec_labels is not None and flag_labels is not None:
-        raise ValueError("Provide labels either via 'path:label' or via --labels, not both")
+        raise ValueError(
+            "Provide labels either via 'path:label' or via --labels, not both"
+        )
     labels = spec_labels if spec_labels is not None else flag_labels
 
     out_path = plot_runs(run_dirs, out_path=args.out_path, labels=labels)

@@ -6,10 +6,10 @@ import itertools
 import json
 import sys
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
-
+from typing import Any
 
 # This script lives inside the QRNN paper folder.
 QRNN_DIR = Path(__file__).resolve().parents[1]
@@ -65,16 +65,16 @@ def _maybe_generate_plots(
 ) -> None:
     try:
         from papers.shared.time_series import plot_metrics as shared_plot_metrics
-        from papers.shared.time_series import plot_predictions as shared_plot_predictions
+        from papers.shared.time_series import (
+            plot_predictions as shared_plot_predictions,
+        )
     except Exception as exc:  # noqa: BLE001
         print(f"[plots] Skipped (import error): {type(exc).__name__}: {exc}")
         return
 
     for ds_name in datasets:
         ds_results = [
-            r
-            for r in results
-            if r.dataset == ds_name and r.error is None and r.run_dir
+            r for r in results if r.dataset == ds_name and r.error is None and r.run_dir
         ]
         if not ds_results:
             continue
@@ -99,7 +99,9 @@ def _maybe_generate_plots(
 
         try:
             pred_path = run_group / f"{ds_name}__predictions_overlay.png"
-            shared_plot_predictions.plot_runs(run_dirs, out_path=pred_path, labels=labels)
+            shared_plot_predictions.plot_runs(
+                run_dirs, out_path=pred_path, labels=labels
+            )
             print(f"[plots] Saved predictions overlay to {pred_path}")
         except Exception as exc:  # noqa: BLE001
             print(
@@ -137,7 +139,7 @@ def _grid(sweep: dict[str, Iterable[Any]]) -> list[dict[str, Any]]:
     values = [list(sweep[k]) for k in keys]
     combos = []
     for prod in itertools.product(*values):
-        combos.append({k: v for k, v in zip(keys, prod)})
+        combos.append(dict(zip(keys, prod)))
     return combos
 
 
@@ -302,7 +304,9 @@ def main(argv: list[str] | None = None) -> int:
     weather_dataset.update(
         {
             "sequence_length": 12,
-            "prediction_horizon": int(weather_dataset.get("prediction_horizon", 1) or 1),
+            "prediction_horizon": int(
+                weather_dataset.get("prediction_horizon", 1) or 1
+            ),
             "max_rows": int(weather_dataset.get("max_rows") or 1200),
             "batch_size": 16,
             # Use a reduced feature set so feature_dim stays small.
@@ -361,7 +365,9 @@ def main(argv: list[str] | None = None) -> int:
                 "entangling_wrap": True,
             }
             # Gate-based runs are more stable in float64.
-            planned.append((ds_name, "gate_pqrnn", model_params, training_cfg, "float64"))
+            planned.append(
+                (ds_name, "gate_pqrnn", model_params, training_cfg, "float64")
+            )
 
         # Photonic QRNN sweep.
         # Must satisfy feat_dim <= 2*kd. We keep kd=1 for these tiny benchmarks.
@@ -377,7 +383,13 @@ def main(argv: list[str] | None = None) -> int:
                 "measurement_space": "dual_rail",
             }
             planned.append(
-                (ds_name, "photonic_qrnn", model_params, training_cfg, base.get("dtype"))
+                (
+                    ds_name,
+                    "photonic_qrnn",
+                    model_params,
+                    training_cfg,
+                    base.get("dtype"),
+                )
             )
 
     if args.max_runs is not None:

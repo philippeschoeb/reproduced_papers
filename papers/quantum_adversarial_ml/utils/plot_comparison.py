@@ -189,8 +189,13 @@ def plot_transfer_from_results(
 
     # Add value labels
     for bar, val in zip(bars, data.flatten()):
-        ax.text(val + 0.02, bar.get_y() + bar.get_height()/2,
-                f"{val:.1%}", va="center", fontsize=10)
+        ax.text(
+            val + 0.02,
+            bar.get_y() + bar.get_height() / 2,
+            f"{val:.1%}",
+            va="center",
+            fontsize=10,
+        )
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
@@ -251,8 +256,22 @@ def plot_model_comparison_from_results(
     x = np.arange(len(models))
     width = 0.35
 
-    bars1 = axes[0].bar(x - width/2, clean_accs, width, label="Clean", color="#2ecc71", edgecolor="black")
-    bars2 = axes[0].bar(x + width/2, adv_accs, width, label="Adversarial", color="#e74c3c", edgecolor="black")
+    bars1 = axes[0].bar(
+        x - width / 2,
+        clean_accs,
+        width,
+        label="Clean",
+        color="#2ecc71",
+        edgecolor="black",
+    )
+    bars2 = axes[0].bar(
+        x + width / 2,
+        adv_accs,
+        width,
+        label="Adversarial",
+        color="#e74c3c",
+        edgecolor="black",
+    )
 
     axes[0].set_ylabel("Accuracy", fontsize=12)
     axes[0].set_title("Model Comparison: Clean vs Adversarial", fontsize=14)
@@ -266,10 +285,15 @@ def plot_model_comparison_from_results(
     for bars in [bars1, bars2]:
         for bar in bars:
             height = bar.get_height()
-            axes[0].annotate(f"{height:.1%}",
-                           xy=(bar.get_x() + bar.get_width()/2, height),
-                           xytext=(0, 3), textcoords="offset points",
-                           ha="center", va="bottom", fontsize=10)
+            axes[0].annotate(
+                f"{height:.1%}",
+                xy=(bar.get_x() + bar.get_width() / 2, height),
+                xytext=(0, 3),
+                textcoords="offset points",
+                ha="center",
+                va="bottom",
+                fontsize=10,
+            )
 
     # Robustness comparison (if available)
     if "robustness" in photonic or "robustness" in gate_based:
@@ -278,15 +302,29 @@ def plot_model_comparison_from_results(
             for attack, eps_dict in photonic.get("robustness", {}).items():
                 if isinstance(eps_dict, dict):
                     epsilons = sorted([float(e) for e in eps_dict.keys()])
-                    accs = [eps_dict[str(e)] if str(e) in eps_dict else eps_dict[e] for e in epsilons]
-                    axes[1].plot(epsilons, accs, "-o", label=f"Photonic ({attack})", linewidth=2)
+                    accs = [
+                        eps_dict[str(e)] if str(e) in eps_dict else eps_dict[e]
+                        for e in epsilons
+                    ]
+                    axes[1].plot(
+                        epsilons, accs, "-o", label=f"Photonic ({attack})", linewidth=2
+                    )
 
         if "robustness" in gate_based:
             for attack, eps_dict in gate_based.get("robustness", {}).items():
                 if isinstance(eps_dict, dict):
                     epsilons = sorted([float(e) for e in eps_dict.keys()])
-                    accs = [eps_dict[str(e)] if str(e) in eps_dict else eps_dict[e] for e in epsilons]
-                    axes[1].plot(epsilons, accs, "--s", label=f"Gate-based ({attack})", linewidth=2)
+                    accs = [
+                        eps_dict[str(e)] if str(e) in eps_dict else eps_dict[e]
+                        for e in epsilons
+                    ]
+                    axes[1].plot(
+                        epsilons,
+                        accs,
+                        "--s",
+                        label=f"Gate-based ({attack})",
+                        linewidth=2,
+                    )
 
         axes[1].set_xlabel("Epsilon (ε)", fontsize=12)
         axes[1].set_ylabel("Accuracy", fontsize=12)
@@ -301,16 +339,27 @@ def plot_model_comparison_from_results(
         if photonic:
             metrics_text += "Photonic (MerLin):\n"
             metrics_text += f"  Clean: {photonic.get('clean_accuracy', 0):.1%}\n"
-            metrics_text += f"  Adversarial: {photonic.get('adversarial_accuracy', 0):.1%}\n"
+            metrics_text += (
+                f"  Adversarial: {photonic.get('adversarial_accuracy', 0):.1%}\n"
+            )
             metrics_text += f"  Fooling Rate: {photonic.get('fooling_rate', 0):.1%}\n\n"
         if gate_based:
             metrics_text += "Gate-based (PennyLane):\n"
             metrics_text += f"  Clean: {gate_based.get('clean_accuracy', 0):.1%}\n"
-            metrics_text += f"  Adversarial: {gate_based.get('adversarial_accuracy', 0):.1%}\n"
+            metrics_text += (
+                f"  Adversarial: {gate_based.get('adversarial_accuracy', 0):.1%}\n"
+            )
             metrics_text += f"  Fooling Rate: {gate_based.get('fooling_rate', 0):.1%}\n"
 
-        axes[1].text(0.1, 0.5, metrics_text, transform=axes[1].transAxes,
-                    fontsize=12, verticalalignment="center", fontfamily="monospace")
+        axes[1].text(
+            0.1,
+            0.5,
+            metrics_text,
+            transform=axes[1].transAxes,
+            fontsize=12,
+            verticalalignment="center",
+            fontfamily="monospace",
+        )
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")

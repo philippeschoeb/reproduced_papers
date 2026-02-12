@@ -92,7 +92,6 @@ def run_accuracy_vs_width(exp_cfg: dict[str, Any], output_dir: Path) -> dict[str
     from perceval import GenericInterferometer
     from sklearn.svm import SVC
     from tqdm import tqdm
-
     from utils.feature_map import circuit_func
     from utils.generate_data import generate_data
 
@@ -140,7 +139,7 @@ def run_accuracy_vs_width(exp_cfg: dict[str, Any], output_dir: Path) -> dict[str
                     test_idx = all_indices[: int(test_size * data_size)]
                     train_idx = all_indices[int(test_size * data_size) : data_size]
 
-                    X_train, X_test = X[train_idx], X[test_idx]
+                    _X_train, _X_test = X[train_idx], X[test_idx]
                     y_train, y_test = y[train_idx], y[test_idx]
 
                 kernel_train_idx = np.ix_(train_idx, train_idx)

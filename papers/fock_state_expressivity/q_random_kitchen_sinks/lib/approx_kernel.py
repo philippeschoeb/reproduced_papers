@@ -37,18 +37,22 @@ def build_mzi():
 def build_general():
     left = pcvl.GenericInterferometer(
         2,
-        lambda i: pcvl.BS()
-        // pcvl.PS(phi=pcvl.P(f"theta_psl1{i}"))
-        // pcvl.BS()
-        // pcvl.PS(phi=pcvl.P(f"theta_{i}")),
+        lambda i: (
+            pcvl.BS()
+            // pcvl.PS(phi=pcvl.P(f"theta_psl1{i}"))
+            // pcvl.BS()
+            // pcvl.PS(phi=pcvl.P(f"theta_{i}"))
+        ),
         shape=pcvl.InterferometerShape.RECTANGLE,
     )
     right = pcvl.GenericInterferometer(
         2,
-        lambda i: pcvl.BS()
-        // pcvl.PS(phi=pcvl.P(f"theta_psr1{i}"))
-        // pcvl.BS()
-        // pcvl.PS(phi=pcvl.P(f"theta_psr2{i}")),
+        lambda i: (
+            pcvl.BS()
+            // pcvl.PS(phi=pcvl.P(f"theta_psr1{i}"))
+            // pcvl.BS()
+            // pcvl.PS(phi=pcvl.P(f"theta_psr2{i}"))
+        ),
         shape=pcvl.InterferometerShape.RECTANGLE,
     )
     circuit = pcvl.Circuit(2)

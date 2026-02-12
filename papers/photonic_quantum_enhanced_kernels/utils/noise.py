@@ -2,10 +2,10 @@ import math
 from functools import reduce
 from itertools import combinations
 
-from exqalibur import FSArray
 import torch
-from torch import Tensor
+from exqalibur import FSArray
 from merlin import build_slos_distribution_computegraph as build_slos_graph
+from torch import Tensor
 
 
 class NoisySLOSComputeGraph:
@@ -24,6 +24,7 @@ class NoisySLOSComputeGraph:
     >>> print(keys, probs)
     [(2, 0), (1, 1), (0, 2)] tensor([[0.3750, 0.2500, 0.3750]])
     """
+
     def __init__(self, indistinguishability: float):
         self.indistinguishability = indistinguishability
         self._slos_graph_per_input = {}
@@ -42,7 +43,6 @@ class NoisySLOSComputeGraph:
         keys, probs = slos_graph.compute_probs(unitary)
 
         return keys, probs
-
 
 
 class _InputStateNoisySLOSComputeGraph:
@@ -83,7 +83,7 @@ class _InputStateNoisySLOSComputeGraph:
 
         # All fock states associated with each photon number n
         self._fock_states_per_n = {
-            i: torch.tensor(list(list(s) for s in FSArray(self.m, i)))
+            i: torch.tensor([list(s) for s in FSArray(self.m, i)])
             for i in range(1, self.n_photons + 1)
         }
 

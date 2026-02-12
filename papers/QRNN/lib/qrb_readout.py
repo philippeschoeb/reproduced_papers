@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import torch
-
 import merlin as ml
+import torch
 from merlin.core.partial_measurement import PartialMeasurement
 from merlin.core.state_vector import StateVector
 
@@ -109,7 +108,9 @@ def partial_measurement_to_dual_rail_probabilities(
 
     return partial_measurement_to_probabilities(
         pm,
-        spec=ReadoutSpec(k=int(spec.k), computation_space=ml.ComputationSpace.DUAL_RAIL),
+        spec=ReadoutSpec(
+            k=int(spec.k), computation_space=ml.ComputationSpace.DUAL_RAIL
+        ),
     )
 
 

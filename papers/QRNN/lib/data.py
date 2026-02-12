@@ -86,7 +86,9 @@ def _find_first_csv(directory: Path) -> Path:
     return candidates[0]
 
 
-def _resolve_dataset_path(raw_path: str | Path | None, *, cfg: dict | None = None) -> Path | None:
+def _resolve_dataset_path(
+    raw_path: str | Path | None, *, cfg: dict | None = None
+) -> Path | None:
     if raw_path is None:
         return None
     path_value = Path(raw_path).expanduser()
@@ -301,7 +303,9 @@ class TensorSequenceDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
 
     def __init__(self, x: torch.Tensor, y: torch.Tensor, dtype: torch.dtype) -> None:
         if x.ndim != 3:
-            raise ValueError(f"Expected x with shape (N, seq_len, input_size), got {tuple(x.shape)}")
+            raise ValueError(
+                f"Expected x with shape (N, seq_len, input_size), got {tuple(x.shape)}"
+            )
         if y.ndim != 1:
             raise ValueError(f"Expected y with shape (N,), got {tuple(y.shape)}")
         if len(x) != len(y):
@@ -364,9 +368,7 @@ def build_dataloaders(cfg: dict) -> tuple[DataLoader, DataLoader, DataLoader, di
     dataset_cfg = cfg.get("dataset", {})
     dtype = dtype_torch(cfg.get("dtype")) or torch.float32
 
-    feature_normalization = str(
-        dataset_cfg.get("feature_normalization", "minmax_-1_1")
-    )
+    feature_normalization = str(dataset_cfg.get("feature_normalization", "minmax_-1_1"))
 
     generator_cfg = dataset_cfg.get("generator")
     if generator_cfg is not None:
@@ -385,7 +387,9 @@ def build_dataloaders(cfg: dict) -> tuple[DataLoader, DataLoader, DataLoader, di
             max_samples = int(max_samples)
 
         generator = ts_data.get(generator_name, **generator_params)
-        x, y = generator.get_data(seq_len=sequence_length, target_dim=1, max_samples=max_samples)
+        x, y = generator.get_data(
+            seq_len=sequence_length, target_dim=1, max_samples=max_samples
+        )
         if x.ndim == 2:
             x = x.unsqueeze(-1)
 
@@ -425,7 +429,9 @@ def build_dataloaders(cfg: dict) -> tuple[DataLoader, DataLoader, DataLoader, di
         val_indices = list(range(train_cutoff, val_cutoff))
         test_indices = list(range(val_cutoff, total_len))
 
-        feat_mean, feat_std, tgt_mean, tgt_std = dataset.compute_stats_for_indices(train_indices)
+        feat_mean, feat_std, tgt_mean, tgt_std = dataset.compute_stats_for_indices(
+            train_indices
+        )
         dataset.set_normalization(
             feat_mean,
             feat_std,

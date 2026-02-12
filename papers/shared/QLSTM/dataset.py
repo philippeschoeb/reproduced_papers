@@ -11,12 +11,15 @@ import shutil
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
-from runtime_lib.data_paths import paper_data_dir
-from papers.shared.time_series import generators as ts
+try:
+    from papers.shared.time_series import generators as ts
+    from runtime_lib.data_paths import paper_data_dir
+except ModuleNotFoundError:
+    REPO_ROOT = Path(__file__).resolve().parents[3]
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+    from papers.shared.time_series import generators as ts
+    from runtime_lib.data_paths import paper_data_dir
 
 
 def _csv_shared_root() -> Path:
@@ -113,6 +116,8 @@ LinearGenerator = ts.LinearGenerator
 ExponentialGenerator = ts.ExponentialGenerator
 BesselJ2Generator = ts.BesselJ2Generator
 PopulationInversionGenerator = ts.PopulationInversionGenerator
-PopulationInversionCollapseRevivalGenerator = ts.PopulationInversionCollapseRevivalGenerator
+PopulationInversionCollapseRevivalGenerator = (
+    ts.PopulationInversionCollapseRevivalGenerator
+)
 LogSineGenerator = ts.LogSineGenerator
 MovingAverageNoiseGenerator = ts.MovingAverageNoiseGenerator

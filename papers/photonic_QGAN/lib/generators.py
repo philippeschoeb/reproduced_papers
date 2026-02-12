@@ -2,14 +2,13 @@ import numpy as np
 import perceval as pcvl
 import torch
 import torch.nn as nn
-
 from utils.mappings import get_output_map, map_generator_output
 from utils.pqc import ParametrizedQuantumCircuit
 
 
 class ClassicalGenerator(nn.Module):
     def __init__(self):
-        super(ClassicalGenerator, self).__init__()
+        super().__init__()
 
         def block(in_feat, out_feat, normalize=True):
             layers = [nn.Linear(in_feat, out_feat)]
@@ -19,9 +18,7 @@ class ClassicalGenerator(nn.Module):
             return layers
 
         self.model = nn.Sequential(
-            *block(2, 4, normalize=False),
-            nn.Linear(4, int(np.prod((8, 8)))),
-            nn.Tanh()
+            *block(2, 4, normalize=False), nn.Linear(4, int(np.prod((8, 8)))), nn.Tanh()
         )
 
     def forward(self, z):
@@ -30,7 +27,7 @@ class ClassicalGenerator(nn.Module):
         return img
 
 
-#TODO: where the QuantumLayer of MerLin should be used
+# TODO: where the QuantumLayer of MerLin should be used
 class PatchGenerator:
     def __init__(
         self,
@@ -42,7 +39,7 @@ class PatchGenerator:
         lossy,
         remote_token=None,
         use_clements=False,
-        sim = False
+        sim=False,
     ):
         self.image_size = image_size
         self.gen_count = gen_count
@@ -80,7 +77,7 @@ class PatchGenerator:
         proc.with_input(self.input_state)
         proc.min_detected_photons_filter(self.input_state.n)
         if remote_token is not None:
-            self.sampler = pcvl.algorithm.Sampler(proc, max_shots_per_call = 1000000)
+            self.sampler = pcvl.algorithm.Sampler(proc, max_shots_per_call=1000000)
         else:
             self.sampler = pcvl.algorithm.Sampler(proc)
 
@@ -91,7 +88,6 @@ class PatchGenerator:
             self.generators[0].circuit, self.input_state, pnr, lossy
         )
         self.bin_count = np.max(list(self.output_map.values())) + 1
-
 
     def init_params(self):
         params = []
@@ -155,13 +151,13 @@ class PatchGenerator:
                     try:
                         gen_out[out_map[key]] += res[key]
                         total_count += res[key]
-                    except:
+                    except Exception:
                         pass
                 # print(np.sum(gen_out / self.sample_count), np.sum(gen_out / total_count))
                 if total_count > 0:
                     gen_out /= total_count
                 out_modes = map_generator_output(
-                        gen_out, self.image_size * self.image_size // self.gen_count
+                    gen_out, self.image_size * self.image_size // self.gen_count
                 )
                 max_mode = np.max(out_modes)
                 if max_mode > 0:

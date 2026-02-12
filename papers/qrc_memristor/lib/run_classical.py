@@ -1,30 +1,36 @@
 import argparse
-import json
 import logging
 import os
 import sys
+from datetime import datetime
+from typing import Any, Optional
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from datetime import datetime
-from typing import Optional, Dict, Any, List, Union
 
 # Path fix: 3 levels up
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
-from utils.utils import *
 from lib.classical_models import ClassicalBenchmark
+from utils.datasets import generate_narma, get_dataset
+from utils.utils import (
+    get_clean_config_classical,
+    load_config_file,
+    save_json,
+    setup_logging,
+)
 
 
 def train_and_evaluate(
-        model: nn.Module,
-        u_train: torch.Tensor,
-        y_train: torch.Tensor,
-        u_test: torch.Tensor,
-        y_test: torch.Tensor,
-        epochs: int,
-        lr: float,
-        device: str
+    model: nn.Module,
+    u_train: torch.Tensor,
+    y_train: torch.Tensor,
+    u_test: torch.Tensor,
+    y_test: torch.Tensor,
+    epochs: int,
+    lr: float,
+    device: str,
 ) -> float:
     """
     Trains a classical benchmark model and evaluates it on a test set.
@@ -47,7 +53,7 @@ def train_and_evaluate(
     criterion = nn.MSELoss()
 
     model.train()
-    for ep in range(epochs):
+    for _ep in range(epochs):
         optimizer.zero_grad()
         pred = model(u_train)
         loss = criterion(pred, y_train)
@@ -61,7 +67,7 @@ def train_and_evaluate(
     return test_mse
 
 
-def run_classical_task(args: argparse.Namespace) -> Dict[str, Any]:
+def run_classical_task(args: argparse.Namespace) -> dict[str, Any]:
     """
     Executes the classical benchmark task (NARMA, Mackey-Glass, Santa Fe).
 
@@ -87,12 +93,9 @@ def run_classical_task(args: argparse.Namespace) -> Dict[str, Any]:
         np.random.seed(seed)
 
         if args.task == "narma":
-            if 'generate_narma' in globals():
-                u_tens, y_tens, _ = generate_narma(data_size=args.data_size, seed=seed, device=args.device)
-            else:
-                u_raw, y_raw = get_dataset("narma", args.data_size)
-                u_tens = torch.tensor(u_raw, dtype=torch.float32).to(args.device)
-                y_tens = torch.tensor(y_raw, dtype=torch.float32).to(args.device)
+            u_tens, y_tens, _ = generate_narma(
+                data_size=args.data_size, seed=seed, device=args.device
+            )
             u_tensor = u_tens
             y_tensor = y_tens
         else:
@@ -125,7 +128,9 @@ def run_classical_task(args: argparse.Namespace) -> Dict[str, Any]:
         y_test = y_tensor[:, train_len:, :]
 
         model = ClassicalBenchmark(model_type=args.model_type, input_dim=1)
-        mse = train_and_evaluate(model, u_train, y_train, u_test, y_test, args.epochs, args.lr, args.device)
+        mse = train_and_evaluate(
+            model, u_train, y_train, u_test, y_test, args.epochs, args.lr, args.device
+        )
 
         logging.info(f"Run {i + 1} MSE: {mse:.6f}")
         all_mses.append(mse)
@@ -134,14 +139,10 @@ def run_classical_task(args: argparse.Namespace) -> Dict[str, Any]:
     std_mse = np.std(all_mses)
     logging.info(f"FINAL RESULT >> Mean MSE: {mean_mse:.6f} +/- {std_mse:.6f}")
 
-    return {
-        "mean_mse": mean_mse,
-        "std_mse": std_mse,
-        "all_mses": all_mses
-    }
+    return {"mean_mse": mean_mse, "std_mse": std_mse, "all_mses": all_mses}
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     """
     Main entry point for classical benchmark experiments.
 
@@ -153,11 +154,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         int: Exit code (0 for success, 1 for error).
     """
     parser = argparse.ArgumentParser(
-        description="Classical Benchmark Experiments",
-        allow_abbrev=False
+        description="Classical Benchmark Experiments", allow_abbrev=False
     )
 
-    parser.add_argument("--config", type=str, help="Path to JSON config file to load defaults from")
+    parser.add_argument(
+        "--config", type=str, help="Path to JSON config file to load defaults from"
+    )
     parser.add_argument("--task", choices=["narma", "mackey_glass", "santa_fe"])
     parser.add_argument("--model-type", choices=["L", "Q", "L+M", "Q+M"])
     parser.add_argument("--n-runs", type=int)
@@ -186,15 +188,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         "seed": 42,
         "device": "cpu",
         "output_dir": "./results_classical",
-        "exp_name": ""
+        "exp_name": "",
     }
 
     config_vals = {}
     if args.config:
         print(f"Loading configuration from {args.config}...")
         config_vals = load_config_file(args.config)
-        if 'size' in config_vals and 'data_size' not in config_vals:
-            config_vals['data_size'] = config_vals.pop('size')
+        if "size" in config_vals and "data_size" not in config_vals:
+            config_vals["data_size"] = config_vals.pop("size")
 
     for key, default_val in defaults.items():
         arg_val = getattr(args, key, None)

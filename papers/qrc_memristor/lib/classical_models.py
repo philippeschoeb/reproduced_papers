@@ -1,10 +1,9 @@
 import torch
 import torch.nn as nn
-from typing import Optional
 
 
 class ClassicalBenchmark(nn.Module):
-    """
+    r"""
     Implements four specific classical benchmark models for time-series comparison.
     These models range from simple linear regressions to polynomial models with short-term memory (looking back one
     time step).
@@ -95,36 +94,34 @@ class ClassicalBenchmark(nn.Module):
         u_t = u_seq  # (B, T, 1)
 
         # 2. Prepare u_{t-1} (Shifted, padded with 0 at t=0)
-        u_tm1 = torch.cat([torch.zeros(batch_size, 1, 1, device=device), u_seq[:, :-1, :]], dim=1)
+        u_tm1 = torch.cat(
+            [torch.zeros(batch_size, 1, 1, device=device), u_seq[:, :-1, :]], dim=1
+        )
 
         # 3. Construct Feature Vector based on Model Type
         if self.model_type == "L":
             features = u_t
 
         elif self.model_type == "Q":
-            features = torch.cat([
-                u_t ** 3,
-                u_t ** 2,
-                u_t
-            ], dim=2)
+            features = torch.cat([u_t**3, u_t**2, u_t], dim=2)
 
         elif self.model_type == "L+M":
-            features = torch.cat([
-                u_t,
-                u_tm1
-            ], dim=2)
+            features = torch.cat([u_t, u_tm1], dim=2)
 
         elif self.model_type == "Q+M":
-            features = torch.cat([
-                u_t ** 3,
-                (u_t ** 2) * u_tm1,
-                u_t * (u_tm1 ** 2),
-                u_t ** 2,
-                u_t * u_tm1,
-                u_tm1 ** 2,
-                u_t,
-                u_tm1
-            ], dim=2)
+            features = torch.cat(
+                [
+                    u_t**3,
+                    (u_t**2) * u_tm1,
+                    u_t * (u_tm1**2),
+                    u_t**2,
+                    u_t * u_tm1,
+                    u_tm1**2,
+                    u_t,
+                    u_tm1,
+                ],
+                dim=2,
+            )
 
         # 4. Apply Linear Layer (Weights + Bias)
         return self.net(features)

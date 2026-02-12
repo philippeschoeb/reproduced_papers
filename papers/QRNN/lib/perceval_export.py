@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from .qrb_circuit import QRBCircuitSpec, build_qrb_circuit
 
@@ -10,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 def _build_qrb_circuit(*, kd: int, kh: int):
-    import perceval as pcvl  # noqa: WPS433
 
     kd = int(kd)
     kh = int(kh)
@@ -39,7 +37,7 @@ def export_qrb_circuit_svg(
     kh: int,
     filename: str = "qrb_circuit.svg",
     recursive: bool = True,
-) -> Optional[Path]:
+) -> Path | None:
     """Render the QRB Perceval circuit used by the photonic QRNN as an SVG.
 
     Perceval 1.1.0 does not expose `Format.SVG`; however `Format.HTML` returns a

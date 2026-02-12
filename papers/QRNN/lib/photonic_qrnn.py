@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, Optional
-
-import torch
-from torch import nn
 
 import merlin as ml
-
+import torch
 from merlin.core.partial_measurement import PartialMeasurement
+from torch import nn
 
 from .angle_encoding import apply_input_encoding
 from .qrb_circuit import QRBCircuitSpec, build_qrb_circuit
@@ -29,7 +27,7 @@ class PhotonicQRNNConfig:
     kh: int  # logical "hidden" photons
     depth: int = 1  # number of QRB layers per time step
     shots: int = 0  # 0 => full statevector
-    dtype: Optional[torch.dtype] = None
+    dtype: torch.dtype | None = None
     input_encoding: str = "identity"  # identity|arccos
     # Post-selection / computational subspace for the measured D register.
     # - "dual_rail": outcomes correspond to bitstrings (size 2**kd)
@@ -127,7 +125,9 @@ class PhotonicQRNNCell(nn.Module):
         if measurement_space is ml.ComputationSpace.DUAL_RAIL:
             readout_in_dim = 2**kd
         else:
-            readout_in_dim = int(ml.Combinadics("unbunched", n=kd, m=2 * kd).compute_space_size())
+            readout_in_dim = int(
+                ml.Combinadics("unbunched", n=kd, m=2 * kd).compute_space_size()
+            )
         # Match baseline API: QRNN is currently a scalar regressor.
         self.readout = nn.Linear(readout_in_dim, 1, dtype=self._dtype)
 
@@ -246,14 +246,18 @@ class PhotonicQRNNCell(nn.Module):
             )
 
         x_batch = self._pad_features_to_required(x_batch)
-        x_batch = apply_input_encoding(x_batch.to(dtype=self._dtype), self.config.input_encoding)
+        x_batch = apply_input_encoding(
+            x_batch.to(dtype=self._dtype), self.config.input_encoding
+        )
 
         kh = int(self.config.kh)
         depth = int(self.config.depth)
 
         if isinstance(hidden, torch.Tensor):
             branches: list[HiddenBranch] = [
-                HiddenBranch(prob=torch.tensor(1.0, dtype=self._dtype), hidden_amp=hidden)
+                HiddenBranch(
+                    prob=torch.tensor(1.0, dtype=self._dtype), hidden_amp=hidden
+                )
             ]
         else:
             branches = list(hidden)

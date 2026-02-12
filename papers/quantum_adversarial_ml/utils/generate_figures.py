@@ -142,9 +142,9 @@ def detect_experiment_type(run_dir: Path, results: dict[str, Any]) -> str:
 
 
 def generate_figures_for_run(
-        run_dir: Path,
-        figure_types: list[str] | None = None,
-        force: bool = False,
+    run_dir: Path,
+    figure_types: list[str] | None = None,
+    force: bool = False,
 ) -> list[Path]:
     """Generate figures for a single run.
 
@@ -203,7 +203,9 @@ def generate_figures_for_run(
                     generated.append(path)
 
             elif fig_type == "noise":
-                path = plot_noise_comparison_from_results(run_dir, results, config, force)
+                path = plot_noise_comparison_from_results(
+                    run_dir, results, config, force
+                )
                 if path:
                     generated.append(path)
 
@@ -213,7 +215,9 @@ def generate_figures_for_run(
                     generated.append(path)
 
             elif fig_type == "comparison":
-                path = plot_model_comparison_from_results(run_dir, results, config, force)
+                path = plot_model_comparison_from_results(
+                    run_dir, results, config, force
+                )
                 if path:
                     generated.append(path)
 
@@ -224,8 +228,8 @@ def generate_figures_for_run(
 
 
 def generate_all_figures(
-        base_dir: Path,
-        force: bool = False,
+    base_dir: Path,
+    force: bool = False,
 ) -> dict[str, list[Path]]:
     """Generate figures for all runs in a directory.
 

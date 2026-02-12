@@ -79,7 +79,6 @@ def run_accuracy_vs_geometric_difference(
     from scipy.interpolate import UnivariateSpline
     from sklearn.svm import SVC
     from tqdm import tqdm
-
     from utils.generate_data import generate_data
 
     output_dir = Path(output_dir)

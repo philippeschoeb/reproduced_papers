@@ -1,18 +1,17 @@
 import numpy as np
-import torch.nn as nn
 import torch
-
+import torch.nn as nn
 import torch.optim as optim
-
-from lib.generators import PatchGenerator
 from lib.discriminator import Discriminator
-
+from lib.generators import PatchGenerator
 from utils.spsa import SPSA
+
 
 def bernoulli_delta(n_params, p=0.5):
     delta_k = np.random.binomial(1, p, n_params)
     delta_k[delta_k == 0] = -1
     return delta_k
+
 
 class QGAN:
     def __init__(
@@ -27,7 +26,7 @@ class QGAN:
         lossy,
         remote_token=None,
         use_clements=False,
-        sim = False
+        sim=False,
     ):
         self.noise_dim = noise_dim
         self.image_size = image_size
@@ -41,7 +40,7 @@ class QGAN:
             lossy,
             remote_token,
             use_clements,
-            sim = sim
+            sim=sim,
         )
         self.D = Discriminator(image_size)
 
@@ -94,7 +93,8 @@ class QGAN:
 
         self.G.update_var_params(params)
         return np.array(grads)
-    #TODO: where the PyTorch otpimizer (Adam, SGD...) should be used
+
+    # TODO: where the PyTorch otpimizer (Adam, SGD...) should be used
     def fit(self, dataloader, lrD, opt_params, silent=False, callback=None):
         spsa_iter_num = opt_params["spsa_iter_num"]
         opt_iter_num = opt_params["opt_iter_num"]

@@ -45,7 +45,9 @@ def show_grid(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Visualize samples from fake_progress.csv.")
+    parser = argparse.ArgumentParser(
+        description="Visualize samples from fake_progress.csv."
+    )
     parser.add_argument(
         "csv_path",
         type=Path,
@@ -99,7 +101,6 @@ def main() -> None:
             image_size=args.image_size,
             cols=args.cols,
         )
-
 
 
 if __name__ == "__main__":

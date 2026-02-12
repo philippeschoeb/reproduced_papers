@@ -32,9 +32,11 @@ def _ensure_repo_root_on_syspath() -> None:
         sys.path.insert(0, str(repo_root))
 
 
-_ensure_repo_root_on_syspath()
-
-from papers.shared.time_series.plotting import maybe_use_agg_backend, save_figure
+try:
+    from papers.shared.time_series.plotting import maybe_use_agg_backend, save_figure
+except ModuleNotFoundError:
+    _ensure_repo_root_on_syspath()
+    from papers.shared.time_series.plotting import maybe_use_agg_backend, save_figure
 
 
 def _resolve_run_dir(path: Path) -> Path:
@@ -56,7 +58,9 @@ def _load_history(run_dir: Path) -> list[dict]:
     metrics = json.loads(metrics_path.read_text())
     history = metrics.get("history")
     if not isinstance(history, list) or not history:
-        raise ValueError(f"Invalid metrics.json (missing non-empty 'history') in {run_dir}")
+        raise ValueError(
+            f"Invalid metrics.json (missing non-empty 'history') in {run_dir}"
+        )
     return history
 
 
@@ -270,7 +274,9 @@ def main(argv: list[str] | None = None) -> int:
     run_paths, spec_labels = _parse_run_specs(list(args.run_dirs))
     flag_labels = _parse_labels(args.labels, expected=len(run_paths))
     if spec_labels is not None and flag_labels is not None:
-        raise ValueError("Provide labels either via 'path:label' or via --labels, not both")
+        raise ValueError(
+            "Provide labels either via 'path:label' or via --labels, not both"
+        )
     labels = spec_labels if spec_labels is not None else flag_labels
 
     out_path = plot_runs(

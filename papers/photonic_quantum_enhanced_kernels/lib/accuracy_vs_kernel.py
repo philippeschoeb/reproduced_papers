@@ -100,7 +100,6 @@ def run_accuracy_vs_kernel(exp_cfg: dict[str, Any], output_dir: Path) -> dict[st
     from perceval import GenericInterferometer
     from sklearn.model_selection import GridSearchCV
     from sklearn.svm import SVC
-
     from utils.feature_map import circuit_func
     from utils.generate_data import generate_data
     from utils.noise import NoisySLOSComputeGraph
@@ -138,9 +137,7 @@ def run_accuracy_vs_kernel(exp_cfg: dict[str, Any], output_dir: Path) -> dict[st
         nt_available = False
         jnp = None  # type: ignore[assignment]
         nt = None  # type: ignore[assignment]
-        LOGGER.warning(
-            "Skipping Neural Tangent baseline due to import error: %s", exc
-        )
+        LOGGER.warning("Skipping Neural Tangent baseline due to import error: %s", exc)
 
     if nt_available:
         _, _, neural_tangent_kernel = nt.stax.serial(

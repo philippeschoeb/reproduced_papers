@@ -238,7 +238,6 @@ def run_mnist_experiment(
         save_path=str(run_dir / "model.pt") if options.get("save_model") else None,
     )
 
-
     logger.info(f"Best accuracy: {results['best_accuracy']:.3f}")
 
     return {"training": results, "model": model, "test_loader": test_loader}
@@ -349,7 +348,6 @@ def run_attack_experiment(
         )
         results["robustness"] = robustness
 
-
     return results
 
 
@@ -393,7 +391,6 @@ def run_defense_experiment(
         f"Final adversarial accuracy: {results['final_adversarial_accuracy']:.3f}"
     )
 
-
     return results
 
 
@@ -436,7 +433,6 @@ def run_ising_experiment(
         if options.get("save_model")
         else None,
     )
-
 
     logger.info(f"Best accuracy: {results['best_accuracy']:.3f}")
 
@@ -489,7 +485,6 @@ def run_topological_experiment(
         if options.get("save_model")
         else None,
     )
-
 
     logger.info(f"Best accuracy: {results['best_accuracy']:.3f}")
 

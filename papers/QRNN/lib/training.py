@@ -192,9 +192,7 @@ def fit(
         delta = float(training_cfg.get("huber_delta", 1.0))
         criterion = nn.HuberLoss(delta=delta)
     else:
-        raise ValueError(
-            f"Unsupported loss '{loss_name}' (expected: mse, huber)"
-        )
+        raise ValueError(f"Unsupported loss '{loss_name}' (expected: mse, huber)")
 
     scheduler = None
     scheduler_cfg = training_cfg.get("scheduler")
@@ -288,7 +286,9 @@ def fit(
         if val_loss + early_min_delta < best_val:
             best_val = val_loss
             best_epoch = epoch
-            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+            best_state = {
+                k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+            }
 
         if early_enabled and (epoch - best_epoch) >= early_patience:
             LOGGER.info(

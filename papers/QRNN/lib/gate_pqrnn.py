@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 from torch import nn
@@ -33,7 +32,7 @@ class GatePQRNNConfig:
     depth: int = 1
     entangling: str = "cb"  # cb|nn|all
     entangling_wrap: bool = True
-    dtype: Optional[torch.dtype] = None
+    dtype: torch.dtype | None = None
     input_encoding: str = "identity"  # identity|arccos
 
 
@@ -89,16 +88,14 @@ class GatePQRNNCell(nn.Module):
 
         # Single-qubit rotations: RX-RZ-RX per qubit per layer.
         self.rot = nn.Parameter(
-            0.01
-            * torch.randn(depth, self.n_total, 3, dtype=self._dtype)
+            0.01 * torch.randn(depth, self.n_total, 3, dtype=self._dtype)
         )
 
         # IsingZZ entanglers per layer.
         edges = self._edges()
         self._n_edges = len(edges)
         self.zz = nn.Parameter(
-            0.01
-            * torch.randn(depth, self._n_edges, dtype=self._dtype)
+            0.01 * torch.randn(depth, self._n_edges, dtype=self._dtype)
         )
 
         # Readout: y_t = Linear(p1)
@@ -106,7 +103,9 @@ class GatePQRNNCell(nn.Module):
 
         # Initial hidden density matrix.
         if self.n_hidden > 0:
-            rho_h0 = _zero_density_matrix(self.n_hidden, complex_dtype=self._complex_dtype)
+            rho_h0 = _zero_density_matrix(
+                self.n_hidden, complex_dtype=self._complex_dtype
+            )
         else:
             rho_h0 = torch.ones(1, 1, dtype=self._complex_dtype)
         self.register_buffer("_rho_h0", rho_h0)
@@ -118,7 +117,9 @@ class GatePQRNNCell(nn.Module):
         if self.n_total <= 1:
             return []
         if self.entangling == "all":
-            return [(i, j) for i in range(self.n_total) for j in range(i + 1, self.n_total)]
+            return [
+                (i, j) for i in range(self.n_total) for j in range(i + 1, self.n_total)
+            ]
         # Nearest-neighbor chain on the full register.
         edges = [(i, i + 1) for i in range(self.n_total - 1)]
         # CB connectivity (paper): chain + optional wrap-around (0, N-1).
@@ -133,7 +134,9 @@ class GatePQRNNCell(nn.Module):
             raise ValueError(
                 f"Gate pQRNN expects at most {self.n_data} features, got {int(x_batch.shape[-1])}"
             )
-        pad = x_batch.new_zeros((x_batch.shape[0], self.n_data - int(x_batch.shape[-1])))
+        pad = x_batch.new_zeros(
+            (x_batch.shape[0], self.n_data - int(x_batch.shape[-1]))
+        )
         return torch.cat([x_batch, pad], dim=-1)
 
     def _build_qnode(self):
@@ -178,12 +181,18 @@ class GatePQRNNCell(nn.Module):
                     qml.IsingZZ(-2.0 * zz[layer, e_idx], wires=[a, b])
 
             exp_z = qml.expval(qml.PauliZ(d_wires[0]))
-            rho_h_out = qml.density_matrix(wires=h_wires) if self.n_hidden > 0 else qml.density_matrix(wires=[])
+            rho_h_out = (
+                qml.density_matrix(wires=h_wires)
+                if self.n_hidden > 0
+                else qml.density_matrix(wires=[])
+            )
             return exp_z, rho_h_out
 
         self._qnode = circuit
 
-    def forward(self, x: torch.Tensor, rho_h: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, x: torch.Tensor, rho_h: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         if x.ndim == 1:
             x_batch = x.unsqueeze(0)
         elif x.ndim == 2:
@@ -204,7 +213,9 @@ class GatePQRNNCell(nn.Module):
 
         # Build the full density matrix: |0><0|_D ⊗ rho_H.
         dim_d = 2**self.n_data
-        rho_d0 = torch.zeros(dim_d, dim_d, dtype=self._complex_dtype, device=rho_h.device)
+        rho_d0 = torch.zeros(
+            dim_d, dim_d, dtype=self._complex_dtype, device=rho_h.device
+        )
         rho_d0[0, 0] = 1.0 + 0.0j
         rho_full = torch.kron(rho_d0, rho_h.to(dtype=self._complex_dtype))
 
@@ -235,11 +246,15 @@ class GatePQRNNRegressor(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.ndim != 3:
-            raise ValueError(f"Expected x shape (batch, seq_len, feat), got {tuple(x.shape)}")
+            raise ValueError(
+                f"Expected x shape (batch, seq_len, feat), got {tuple(x.shape)}"
+            )
 
         batch, seq_len, feat = x.shape
         if feat > self.cell.n_data:
-            raise ValueError(f"Expected feature dim <= n_data={self.cell.n_data}, got {feat}")
+            raise ValueError(
+                f"Expected feature dim <= n_data={self.cell.n_data}, got {feat}"
+            )
 
         outputs: list[torch.Tensor] = []
         for b in range(batch):

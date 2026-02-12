@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from common import PROJECT_DIR, build_project_cli_parser, load_runtime_ready_config
+from common import build_project_cli_parser, load_runtime_ready_config
 
 
 def test_cli_help_exits_cleanly():

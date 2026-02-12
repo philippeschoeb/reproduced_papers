@@ -1,18 +1,19 @@
+import os
+from typing import Optional, Union
+
 import numpy as np
 import torch
-import os
-from typing import Tuple, Optional, Union
 
 
 # --- 1. NARMA (Time Series) ---
 def generate_narma(
-        data_size: int = 1000,
-        x_low: float = 0.0,
-        x_high: float = 0.5,
-        seed: Optional[int] = None,
-        device: Union[str, torch.device] = "cpu",
-        dtype: torch.dtype = torch.float32,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    data_size: int = 1000,
+    x_low: float = 0.0,
+    x_high: float = 0.5,
+    seed: Optional[int] = None,
+    device: Union[str, torch.device] = "cpu",
+    dtype: torch.dtype = torch.float32,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Generates a synthetic NARMA (Nonlinear AutoRegressive Moving Average) time series. The sequence follows the
     recurrence relation from the paper:
@@ -39,7 +40,9 @@ def generate_narma(
     else:
         g = None
 
-    x = torch.empty(data_size, device=device, dtype=dtype).uniform_(x_low, x_high, generator=g)
+    x = torch.empty(data_size, device=device, dtype=dtype).uniform_(
+        x_low, x_high, generator=g
+    )
 
     y_full = torch.empty(data_size + 1, device=device, dtype=dtype)
     y_full[0] = 0.0  # y_0
@@ -56,14 +59,14 @@ def generate_narma(
 
 # --- 2. MACKEY-GLASS (Chaotic ODE) ---
 def generate_mackey_glass(
-        n_samples: int,
-        tau: int = 17,
-        beta: float = 0.2,
-        gamma: float = 0.1,
-        n: int = 10,
-        integration_step: float = 0.1,
-        sampling_step: float = 1.0
-) -> Tuple[np.ndarray, np.ndarray]:
+    n_samples: int,
+    tau: int = 17,
+    beta: float = 0.2,
+    gamma: float = 0.1,
+    n: int = 10,
+    integration_step: float = 0.1,
+    sampling_step: float = 1.0,
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Generates the Mackey-Glass chaotic time series using RK4 integration. The differential equation is:
         dx/dt = beta * x(t-tau) / (1 + x(t-tau)^n) - gamma * x(t)
@@ -98,17 +101,19 @@ def generate_mackey_glass(
         x_tau = x_history[i - delay_steps]
 
         def mg_deriv(val, val_tau):
-            return (beta * val_tau) / (1.0 + val_tau ** n) - gamma * val
+            return (beta * val_tau) / (1.0 + val_tau**n) - gamma * val
 
         k1 = mg_deriv(x_val, x_tau)
         k2 = mg_deriv(x_val + 0.5 * integration_step * k1, x_tau)
         k3 = mg_deriv(x_val + 0.5 * integration_step * k2, x_tau)
         k4 = mg_deriv(x_val + integration_step * k3, x_tau)
 
-        x_history[i + 1] = x_val + (integration_step / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
+        x_history[i + 1] = x_val + (integration_step / 6.0) * (
+            k1 + 2 * k2 + 2 * k3 + k4
+        )
 
     generated_data = x_history[delay_steps::steps_per_sample]
-    final_data = generated_data[burn_in_samples: burn_in_samples + n_samples + 1]
+    final_data = generated_data[burn_in_samples : burn_in_samples + n_samples + 1]
 
     inputs = final_data[:-1]
     targets = final_data[1:]
@@ -117,7 +122,9 @@ def generate_mackey_glass(
 
 
 # --- 3. SANTA FE LASER (Real Data - Local File) ---
-def load_santa_fe(n_samples: int = 1000, data_dir: str = "./././data/qrc_memristor") -> Tuple[np.ndarray, np.ndarray]:
+def load_santa_fe(
+    n_samples: int = 1000, data_dir: str = "./././data/qrc_memristor"
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Loads the Santa Fe Laser Dataset (Task A) from a local text file.
 
@@ -153,7 +160,9 @@ def load_santa_fe(n_samples: int = 1000, data_dir: str = "./././data/qrc_memrist
     try:
         data = np.genfromtxt(filepath)
     except Exception as e:
-        raise ValueError(f"Error reading {filepath}. Ensure it contains only numbers.") from e
+        raise ValueError(
+            f"Error reading {filepath}. Ensure it contains only numbers."
+        ) from e
 
     # 3. Normalize to [0, 1]
     data_min = np.min(data)
@@ -165,21 +174,21 @@ def load_santa_fe(n_samples: int = 1000, data_dir: str = "./././data/qrc_memrist
 
     # 4. Truncate to requested size
     if n_samples > len(data) - 1:
-        print(f"Requested {n_samples} samples, but file has {len(data)}. Using max available.")
+        print(
+            f"Requested {n_samples} samples, but file has {len(data)}. Using max available."
+        )
         n_samples = len(data) - 1
 
     inputs = data[:n_samples]
-    targets = data[1:n_samples + 1]
+    targets = data[1 : n_samples + 1]
 
     return inputs, targets
 
 
 # --- UNIFIED LOADER ---
 def get_dataset(
-        task: str,
-        n_samples: int = 1000,
-        **kwargs
-) -> Union[Tuple[torch.Tensor, torch.Tensor], Tuple[np.ndarray, np.ndarray]]:
+    task: str, n_samples: int = 1000, **kwargs
+) -> Union[tuple[torch.Tensor, torch.Tensor], tuple[np.ndarray, np.ndarray]]:
     """
     Unified interface to load or generate datasets for various tasks.
 
@@ -206,7 +215,7 @@ def get_dataset(
         return load_santa_fe(n_samples, **kwargs)
     elif task == "nonlinear":
         x = torch.linspace(0, 1, 85).numpy()
-        y = x ** 4
+        y = x**4
         return x, y
     else:
         raise ValueError(f"Unknown task: {task}")
