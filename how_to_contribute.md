@@ -92,14 +92,14 @@ Notes:
 
 ## Submission process
 
-1. **Create a branch with an allowed prefix** (`release-`, `paper-`, `PAPER-`, `pml-`, or `PML-`) before opening a PR to `main`.
-2. **Propose** the paper in our [GitHub Discussions](https://github.com/merlinquantum/merlin/discussions)
-3. **Implement** using the repository tools, following the structure above
-4. **Reproduce with paper settings**: validate results in the original paper setup (datasets/splits/metrics/hyperparameters as closely as possible).
-5. **Reproduce with MerLin settings**: run and validate the same study through the MerLin runtime and project conventions.
-6. **Document** in Jupyter notebook format
-7. **Format and lint** before opening the PR: run `ruff format .` and `ruff check .` with latest stable ruff (fix reported issues).
-8. **Submit** a pull request with the complete reproduction folder
+1. **Create a branch with an allowed prefix** (`release-`, `paper-`, `PAPER-`, `pml-`, or `PML-`) before opening a PR to `main`;
+2. **Propose** the paper in our [GitHub Discussions](https://github.com/merlinquantum/merlin/discussions);
+3. **Implement** using the repository tools, following the structure above;
+4. **Reproduce with paper settings**: validate results in the original paper setup (datasets/splits/metrics/hyperparameters as closely as possible);
+5. **Reproduce with MerLin settings**: run and validate the same study through the MerLin runtime and project conventions;
+6. **Document** in Jupyter notebook format;
+7. **Format and lint** before opening the PR: run `ruff format .` and `ruff check .` with latest stable ruff (fix reported issues);
+8. **Submit** a pull request with the complete reproduction folder;
 9. **Summarize** in a couple of lines the results of the reproduced paper in the table in the main README.
 
 ## Contribution requirements
